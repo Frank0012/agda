@@ -5,6 +5,7 @@ module Agda.Interaction.Highlighting.Sexp.Backend
   ) where
 
 import Agda.Interaction.Highlighting.Sexp.Base
+import Agda.Interaction.Highlighting.Sexp.Sexp as SP
 
 import Control.DeepSeq
 import Control.Monad.Trans ( MonadIO )
@@ -40,6 +41,7 @@ import Agda.TypeChecking.Monad
 data SexpFlags = SexpFlags
   { sexpFlagEnabled              :: Bool
   , sexpFlagDir                  :: FilePath
+  , sexpFlagFunc                 :: String
   } deriving (Eq, Generic)
 
 instance NFData SexpFlags
@@ -56,7 +58,7 @@ sexpBackend = Backend sexpBackend'
 
 sexpBackend' :: Backend' SexpFlags SexpEnv () () Definition
 sexpBackend' = Backend'
-  { backendName           = "S-expression backend options"
+  { backendName           = "S-expression"
   , backendVersion        = Nothing
   , options               = initialSexpFlags
   , commandLineFlags      = sexpFlags
@@ -75,10 +77,14 @@ sexpBackend' = Backend'
 defaultSexpDir :: String
 defaultSexpDir = "sexp"
 
+defaultSexpFunc :: String
+defaultSexpFunc = ""
+
 initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
   { sexpFlagEnabled   = False
   , sexpFlagDir       = defaultSexpDir
+  , sexpFlagFunc      = defaultSexpFunc
   }
 
 sexpOptsOfFlags :: SexpFlags -> SexpOptions
@@ -93,6 +99,8 @@ sexpFlags =
     , Option []     ["sexp-dir"] (ReqArg sexpDirFlag "DIR")
                     ("directory in which s-expression files are placed (default: " ++
                      defaultSexpDir ++ ")")
+    , Option []     ["sexp-func"] (ReqArg sexpFuncFlag "FUNC")
+                    ("function definition to search s-expression files for")
     ]
 
 sexpFlag :: Flag SexpFlags
@@ -100,6 +108,9 @@ sexpFlag o = return $ o { sexpFlagEnabled = True }
 
 sexpDirFlag :: FilePath -> Flag SexpFlags
 sexpDirFlag d o = return $ o { sexpFlagDir = d }
+
+sexpFuncFlag :: String -> Flag SexpFlags
+sexpFuncFlag d o = return $ o { sexpFlagFunc = d }
 
 runLogSexpWithMonadDebug :: MonadDebug m => LogSexpT m a -> m a
 runLogSexpWithMonadDebug = runLogSexpWith $ reportS "sexp" 1

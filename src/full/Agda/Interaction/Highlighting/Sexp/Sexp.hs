@@ -8,6 +8,7 @@ import qualified Data.Text.Lazy as T
 import qualified Data.Text as DT
 
 data Sexp = Atom Text | String String | Integer Integer | Double Double | Cons [Sexp]
+            deriving (Show, Eq)
 
 constr :: String -> [Sexp] -> Sexp
 constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst)
