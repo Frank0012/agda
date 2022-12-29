@@ -62,6 +62,8 @@ import Agda.Utils.Pretty
 
 import Agda.Utils.Impossible
 
+import Debug.Trace
+
 dumpFileExt :: FileType -> String
 dumpFileExt ft =
   case ft of
@@ -75,6 +77,7 @@ dumpFileExt ft =
 
 data SexpOptions = SexpOptions
   { sexpOptDir                  :: FilePath
+  , sexpOptFunc                 :: String
   } deriving Eq
 
 -- | Internal type bundling the information related to a module source file
@@ -84,10 +87,12 @@ data SourceFile = SourceFile
   , _srcInterface :: TCM.Interface
   }
 
+
+
+
 -- | Bundle up the highlighting info for a source file
 
-srcFileOfInterface ::
-  TopLevelModuleName -> TCM.Interface -> SourceFile
+srcFileOfInterface :: TopLevelModuleName -> TCM.Interface -> SourceFile
 srcFileOfInterface m i = SourceFile m i
 
 -- | Logging during AST generation
@@ -108,18 +113,26 @@ instance Monad m => MonadLogSexp (LogSexpT m) where
 runLogSexpWith :: Monad m => SexpLogAction m -> LogSexpT m a -> m a
 runLogSexpWith = flip runReaderT
 
-renderSourceFile :: TopLevelModuleName -> TCM.Interface -> [TCM.Definition] -> Text
+renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
 renderSourceFile mdl iface defs =
     toText $ constr "module" (toSexp mdl : map toSexp defs)
+
+-- | Convert the search term for type searching
+
+convertSearchTerm :: String -> Text --[TCM.Definition] -> Text
+convertSearchTerm defs = toText $ toSexp defs --constr "search" (map toSexp defs)
+
 
 defaultSexpGen :: (MonadIO m, MonadLogSexp m) => SexpOptions -> SourceFile -> [TCM.Definition] -> m ()
 defaultSexpGen opts (SourceFile moduleName iface) defs = do
   logSexp $ render $ "Generating AST for"  <+> pretty moduleName <+> ((parens (pretty target)) <> ".")
   liftIO $ UTF8.writeTextToFile target sexps
+  --liftIO $ UTF8.writeTextToFile target func
   where
     ext = dumpFileExt (TCM.iFileType iface)
     target = (sexpOptDir opts) </> modToFile moduleName ext
     sexps = renderSourceFile moduleName iface defs
+    --func = convertSearchTerm (sexpOptFunc opts)
 
 prepareOutputDirectory :: MonadIO m => FilePath -> m ()
 prepareOutputDirectory sexpDir = liftIO $ do createDirectoryIfMissing True sexpDir

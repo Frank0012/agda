@@ -4,6 +4,8 @@ module Agda.Interaction.Highlighting.Sexp.Backend
   ( sexpBackend
   ) where
 
+import Debug.Trace
+
 import Agda.Interaction.Highlighting.Sexp.Base
 import Agda.Interaction.Highlighting.Sexp.Sexp as SP
 
@@ -78,7 +80,7 @@ defaultSexpDir :: String
 defaultSexpDir = "sexp"
 
 defaultSexpFunc :: String
-defaultSexpFunc = ""
+defaultSexpFunc = "beans"
 
 initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
@@ -90,6 +92,7 @@ initialSexpFlags = SexpFlags
 sexpOptsOfFlags :: SexpFlags -> SexpOptions
 sexpOptsOfFlags flags = SexpOptions
   { sexpOptDir = sexpFlagDir flags
+  , sexpOptFunc = sexpFlagFunc flags
   }
 
 sexpFlags :: [OptDescr (Flag SexpFlags)]
@@ -115,51 +118,24 @@ sexpFuncFlag d o = return $ o { sexpFlagFunc = d }
 runLogSexpWithMonadDebug :: MonadDebug m => LogSexpT m a -> m a
 runLogSexpWithMonadDebug = runLogSexpWith $ reportS "sexp" 1
 
-preCompileSexp
-  :: (MonadIO m, MonadDebug m)
-  => SexpFlags
-  -> m SexpEnv
-preCompileSexp flags = runLogSexpWithMonadDebug $ do
+preCompileSexp :: (MonadIO m, MonadDebug m) => SexpFlags -> m SexpEnv
+preCompileSexp flags = trace (show "----------------------------------PRECOMPILESEXP---------------------------------") runLogSexpWithMonadDebug $ do
   let sexpDir = sexpFlagDir flags
   prepareOutputDirectory sexpDir
   return $ SexpEnv sexpDir
 
-preModuleSexp
-  :: Applicative m
-  => SexpEnv
-  -> IsMain
-  -> TopLevelModuleName
-  -> Maybe FilePath
-  -> m (Recompile () ())
-preModuleSexp _env _isMain _modName _ifacePath = pure $ Recompile ()
+preModuleSexp :: Applicative m => SexpEnv -> IsMain -> TopLevelModuleName -> Maybe FilePath -> m (Recompile () ())
+preModuleSexp _env _isMain _modName _ifacePath = trace (show "----------------------------------PREMODULESEXP---------------------------------") pure $ Recompile ()
 
-compileDefSexp
-  :: Applicative m
-  => SexpEnv
-  -> ()
-  -> IsMain
-  -> Definition
-  -> m Definition
-compileDefSexp _env _menv _isMain def = pure def
+compileDefSexp :: Applicative m => SexpEnv -> () -> IsMain -> Definition -> m Definition
+compileDefSexp _env _menv _isMain def = trace (show "----------------------------------COMPILESEXP---------------------------------") pure def
 
-postModuleSexp
-  :: (MonadIO m, MonadDebug m, ReadTCState m)
-  => SexpEnv
-  -> ()
-  -> IsMain
-  -> TopLevelModuleName
-  -> [Definition]
-  -> m ()
+postModuleSexp :: (MonadIO m, MonadDebug m, ReadTCState m) => SexpEnv -> () -> IsMain -> TopLevelModuleName -> [Definition] -> m ()
 postModuleSexp env menv _isMain modName defs = do
   sexpSrc <- srcFileOfInterface modName <$> curIF
-  runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
+  trace (show "----------------------------------POSTMODULESEXP---------------------------------") runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
     where
-      opts = SexpOptions (sexpDir env)
+      opts = SexpOptions (sexpDir env) (defaultSexpFunc)
 
-postCompileSexp
-  :: Applicative m
-  => SexpEnv
-  -> IsMain
-  -> Map TopLevelModuleName ()
-  -> m ()
-postCompileSexp _cenv _isMain _modulesByName = pure ()
+postCompileSexp :: Applicative m => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
+postCompileSexp _cenv _isMain _modulesByName = trace (show "----------------------------------POSTCOMPILESEXP---------------------------------") pure ()
