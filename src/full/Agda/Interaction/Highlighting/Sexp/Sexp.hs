@@ -6,6 +6,7 @@ import Data.Word
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text as DT
+import Data.Text.Lazy.IO as W
 
 import Control.Monad (guard)
 
@@ -22,6 +23,7 @@ toText (Double x) = T.pack $ show x
 toText (String s) = T.pack $ show s
 toText (Cons lst) = '(' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ')'
 
+-- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
 findList :: T.Text -> Sexp -> [Sexp]
 findList name (Cons mod) = do
   (Cons ((Atom ":definition") : ((Cons spls) : spss)))  <- mod
@@ -29,6 +31,13 @@ findList name (Cons mod) = do
   guard (something == name)
   return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
 
+-- | Output found function from agda module to file
+search :: String -> Sexp -> IO ()
+search name mod = W.writeFile "test/result.txt" toWrite
+    where
+        result = findList (T.pack name) mod
+        toWrite = toText (constr "result" result)
+    
 class Sexpable a where
     toSexp :: a -> Sexp
 
