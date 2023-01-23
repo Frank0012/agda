@@ -37,6 +37,8 @@ import Agda.TypeChecking.Monad
   , reportS
   )
 
+import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans (liftIO)
 
 -- | Command-line options for s-expression generation
 
@@ -80,7 +82,7 @@ defaultSexpDir :: String
 defaultSexpDir = "sexp"
 
 defaultSexpFunc :: String
-defaultSexpFunc = "beans"
+defaultSexpFunc = "not"
 
 initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
@@ -133,9 +135,17 @@ compileDefSexp _env _menv _isMain def = trace (show "---------------------------
 postModuleSexp :: (MonadIO m, MonadDebug m, ReadTCState m) => SexpEnv -> () -> IsMain -> TopLevelModuleName -> [Definition] -> m ()
 postModuleSexp env menv _isMain modName defs = do
   sexpSrc <- srcFileOfInterface modName <$> curIF
-  trace (show "----------------------------------POSTMODULESEXP---------------------------------") runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
+  trace (show "----------------------------------POSTMODULESEXP---------------------------------" ++ (show sexpFlagFunc ) ++ (show sexpOptDir)) runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
     where
       opts = SexpOptions (sexpDir env) (defaultSexpFunc)
 
-postCompileSexp :: Applicative m => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
-postCompileSexp _cenv _isMain _modulesByName = trace (show "----------------------------------POSTCOMPILESEXP---------------------------------") pure ()
+--postCompileSexp :: Applicative m => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
+--postCompileSexp _cenv _isMain _modulesByName = do
+--  let result = 5 * 5
+--  lift $ writeFile "resulting.txt" (show result)
+--  pure ()
+
+--- Writing to file ---
+postCompileSexp :: (MonadIO m, ReadTCState m) => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
+postCompileSexp _cenv _isMain _modulesByName = do
+  pure ()

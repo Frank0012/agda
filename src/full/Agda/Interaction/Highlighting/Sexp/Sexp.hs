@@ -1,5 +1,7 @@
 -- | A very simple implementation of S-expressions that can be dumped to Text easily
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Agda.Interaction.Highlighting.Sexp.Sexp where
 import Debug.Trace
 import Data.Word
@@ -8,13 +10,17 @@ import qualified Data.Text.Lazy as T
 import qualified Data.Text as DT
 import Data.Text.Lazy.IO as W
 
+import Data.Char (isDigit)
+
+import Data.Text (splitOn, pack)
 import Control.Monad (guard)
+import Control.Monad.Trans (MonadIO(..))
 
 data Sexp = Atom Text | String String | Integer Integer | Double Double | Cons [Sexp]
             deriving (Show, Eq)
 
 constr :: String -> [Sexp] -> Sexp
-constr head lst = trace ("CALLING    " ++ show (Cons (Atom (':' `T.cons` (T.pack head)) : lst)))  (Cons (Atom (':' `T.cons` (T.pack head)) : lst))
+constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst) --trace ("CALLING    " ++ show (Cons (Atom (':' `T.cons` (T.pack head)) : lst)))  (Cons (Atom (':' `T.cons` (T.pack head)) : lst))
 
 toText :: Sexp -> T.Text
 toText (Atom x)   = x
@@ -30,10 +36,17 @@ findList name (Cons mod) = do
   (Atom something) <- spls
   guard (something == name)
   return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
+findList name _ = [String "nothing"]
 
 -- | Output found function from agda module to file
-search :: String -> Sexp -> IO ()
-search name mod = W.writeFile "test/result.txt" toWrite
+--search :: String -> Sexp -> IO ()
+--search name mod = W.writeFile "test/result.txt" toWrite
+--    where
+--        result = findList (T.pack name) mod
+--        toWrite = toText (constr "result" result)
+
+search :: MonadIO m => String -> Sexp -> m ()
+search name mod = liftIO (W.writeFile "resulting.txt" toWrite)
     where
         result = findList (T.pack name) mod
         toWrite = toText (constr "result" result)
