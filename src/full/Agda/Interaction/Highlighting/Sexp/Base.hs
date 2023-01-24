@@ -117,10 +117,10 @@ runLogSexpWith = flip runReaderT
 --    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
 renderSourceFile mdl iface defs = do
-    search "not" sp
+    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
     return (toText sp)
       where
-        sp = constr "module" (toSexp mdl : map toSexp defs)
+        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 
 
 -- | Convert the search term for type searching
@@ -159,9 +159,13 @@ instance Sexpable Name where
 instance Sexpable ModuleName where
     toSexp (MName lst) = constr "module-name" $ map toSexp lst
 
+--instance Sexpable QName where
+--    toSexp (QName (MName lst) nam) = constr "name" $ ((mkId $ nameId nam) ++ map toSexp lst ++ [toSexp nam])
+--        where mkId (NameId i (ModuleNameHash m)) = [toSexp m, toSexp i]
+
+-- | Ignoring module identifiers
 instance Sexpable QName where
-    toSexp (QName (MName lst) nam) = constr "name" $ ((mkId $ nameId nam) ++ map toSexp lst ++ [toSexp nam])
-        where mkId (NameId i (ModuleNameHash m)) = [toSexp m, toSexp i]
+    toSexp (QName (MName lst) nam) = constr "name" $ (map toSexp lst ++ [toSexp nam])
 
 instance Sexpable Suffix where
     toSexp NoSuffix = Atom "none"

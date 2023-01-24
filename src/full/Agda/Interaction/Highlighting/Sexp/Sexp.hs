@@ -30,13 +30,23 @@ toText (String s) = T.pack $ show s
 toText (Cons lst) = '(' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ')'
 
 -- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
-findList :: T.Text -> Sexp -> [Sexp]
-findList name (Cons mod) = do
+findName :: T.Text -> Sexp -> [Sexp]
+findName name (Cons mod) = do
   (Cons ((Atom ":definition") : ((Cons spls) : spss)))  <- mod
   (Atom something) <- spls
   guard (something == name)
   return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
-findList name _ = [String "nothing"]
+findName name _ = [String "nothing found"]
+
+-- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
+findType :: Sexp -> Sexp -> [Sexp]
+findType type' (Cons mod) = do
+    (Cons ((Atom ":definition") : ((Cons name) : ((types) : functions))))  <- mod
+    guard (types == type')
+    return (Cons ((Atom ":definition") : ((Cons name) : ((types) : functions))))
+findType type' _ = [String "nothing found"]
+
+
 
 -- | Output found function from agda module to file
 --search :: String -> Sexp -> IO ()
@@ -45,10 +55,16 @@ findList name _ = [String "nothing"]
 --        result = findList (T.pack name) mod
 --        toWrite = toText (constr "result" result)
 
-search :: MonadIO m => String -> Sexp -> m ()
-search name mod = liftIO (W.writeFile "resulting.txt" toWrite)
+--search :: MonadIO m => String -> Sexp -> m ()
+--search name mod = liftIO (W.writeFile "resulting.txt" toWrite)
+--    where
+--        result = findName (T.pack name) mod
+--        toWrite = toText (constr "result" result)
+
+search :: MonadIO m => Sexp -> Sexp -> m ()
+search querey mod = liftIO (W.writeFile "resulting.txt" toWrite)
     where
-        result = findList (T.pack name) mod
+        result = findType querey mod
         toWrite = toText (constr "result" result)
     
 class Sexpable a where
