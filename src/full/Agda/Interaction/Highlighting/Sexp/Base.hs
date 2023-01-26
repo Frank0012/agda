@@ -77,7 +77,7 @@ dumpFileExt ft =
 
 data SexpOptions = SexpOptions
   { sexpOptDir                  :: FilePath
-  , sexpOptFunc                 :: String
+  , sexpOptTypeQuerey           :: String
   } deriving Eq
 
 -- | Internal type bundling the information related to a module source file
@@ -117,7 +117,7 @@ runLogSexpWith = flip runReaderT
 --    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
 renderSourceFile mdl iface defs = do
-    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
+    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
     return (toText sp)
       where
         sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))

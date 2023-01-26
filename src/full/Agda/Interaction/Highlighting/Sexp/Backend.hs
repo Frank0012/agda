@@ -45,7 +45,7 @@ import Control.Monad.Trans (liftIO)
 data SexpFlags = SexpFlags
   { sexpFlagEnabled              :: Bool
   , sexpFlagDir                  :: FilePath
-  , sexpFlagFunc                 :: String
+  , sexpFlagTypeQuerey           :: String
   } deriving (Eq, Generic)
 
 instance NFData SexpFlags
@@ -81,20 +81,20 @@ sexpBackend' = Backend'
 defaultSexpDir :: String
 defaultSexpDir = "sexp"
 
-defaultSexpFunc :: String
-defaultSexpFunc = "not"
+defaultSexpTypeQuerey  :: String
+defaultSexpTypeQuerey = "Char -> Bool" --Cons [Atom ":type"]
 
 initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
-  { sexpFlagEnabled   = False
-  , sexpFlagDir       = defaultSexpDir
-  , sexpFlagFunc      = defaultSexpFunc
+  { sexpFlagEnabled       = False
+  , sexpFlagDir           = defaultSexpDir
+  , sexpFlagTypeQuerey    = defaultSexpTypeQuerey
   }
 
 sexpOptsOfFlags :: SexpFlags -> SexpOptions
 sexpOptsOfFlags flags = SexpOptions
   { sexpOptDir = sexpFlagDir flags
-  , sexpOptFunc = sexpFlagFunc flags
+  , sexpOptTypeQuerey = sexpFlagTypeQuerey flags
   }
 
 sexpFlags :: [OptDescr (Flag SexpFlags)]
@@ -104,8 +104,9 @@ sexpFlags =
     , Option []     ["sexp-dir"] (ReqArg sexpDirFlag "DIR")
                     ("directory in which s-expression files are placed (default: " ++
                      defaultSexpDir ++ ")")
-    , Option []     ["sexp-func"] (ReqArg sexpFuncFlag "FUNC")
-                    ("function definition to search s-expression files for")
+    , Option []     ["sexp-tQuerey"] (ReqArg sexpTypeQuereyFlag "TQUEREY")
+                    ("type signature to search s-expression files for (default: " ++
+                     defaultSexpTypeQuerey ++ ")")
     ]
 
 sexpFlag :: Flag SexpFlags
@@ -114,8 +115,8 @@ sexpFlag o = return $ o { sexpFlagEnabled = True }
 sexpDirFlag :: FilePath -> Flag SexpFlags
 sexpDirFlag d o = return $ o { sexpFlagDir = d }
 
-sexpFuncFlag :: String -> Flag SexpFlags
-sexpFuncFlag d o = return $ o { sexpFlagFunc = d }
+sexpTypeQuereyFlag :: String -> Flag SexpFlags
+sexpTypeQuereyFlag d o = return $ o { sexpFlagTypeQuerey = d }
 
 runLogSexpWithMonadDebug :: MonadDebug m => LogSexpT m a -> m a
 runLogSexpWithMonadDebug = runLogSexpWith $ reportS "sexp" 1
@@ -135,9 +136,9 @@ compileDefSexp _env _menv _isMain def = trace (show "---------------------------
 postModuleSexp :: (MonadIO m, MonadDebug m, ReadTCState m) => SexpEnv -> () -> IsMain -> TopLevelModuleName -> [Definition] -> m ()
 postModuleSexp env menv _isMain modName defs = do
   sexpSrc <- srcFileOfInterface modName <$> curIF
-  trace (show "----------------------------------POSTMODULESEXP---------------------------------" ++ (show sexpFlagFunc ) ++ (show sexpOptDir)) runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
+  trace (show "----------------------------------POSTMODULESEXP---------------------------------") runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
     where
-      opts = SexpOptions (sexpDir env) (defaultSexpFunc)
+      opts = SexpOptions (sexpDir env) defaultSexpTypeQuerey --(defaultSexpFunc)
 
 --postCompileSexp :: Applicative m => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
 --postCompileSexp _cenv _isMain _modulesByName = do
