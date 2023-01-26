@@ -173,26 +173,27 @@ newtype Parser a = P (String -> [(a, String)])
 
 instance Functor Parser where
     fmap g p = P (\inp -> case parse p inp of 
-                    []         -> []
-                    [(v, out)] -> [(g v, out)])
+                    [(v, out)] -> [(g v, out)]
+                    _          -> [])
 
 instance Applicative Parser where
     pure v = P (\inp -> [(v, inp)])
 
     pg <*> px = P (\inp -> case parse pg inp of 
-                    []         -> []
-                    [(g, out)] -> parse (fmap g px) out)
+                    [(g, out)] -> parse (fmap g px) out
+                    _          -> [])
 
 instance Monad Parser where
     p >>= f = P (\inp -> case parse p inp of
-                    []         -> []
-                    [(v, out)] -> parse (f v) out)
+                    [(v, out)] -> parse (f v) out
+                    _          -> [])
 
 instance Alternative Parser where
     empty = P (\inp -> [])
     p <|> q = P (\inp -> case parse p inp of
                             []         -> parse q inp
-                            [(v, out)] -> [(v, out)])
+                            [(v, out)] -> [(v, out)]
+                            _          -> [])
 
 parse :: Parser a  -> String -> [(a, String)]
 parse (P p) inp = p inp
@@ -200,8 +201,8 @@ parse (P p) inp = p inp
 -- Parse a single char
 item :: Parser Char
 item = P (\inp -> case inp of
-                    []     -> []
-                    (x:xs) -> [(x, xs)])
+                    (x:xs) -> [(x, xs)]
+                    _      -> [])
 
 -- Add a condition
 sat :: (Char -> Bool) -> Parser Char
@@ -229,14 +230,14 @@ char x = sat (== x)
 
 -- Handling spacing
 space :: Parser ()
-space  = do many (sat isSpace)
+space  = do _ <- many (sat isSpace)
             return ()
 
 -- Parse strings
 string :: String -> Parser String
 string [] = return []
-string (x:xs) = do char x
-                   string xs
+string (x:xs) = do _ <- char x
+                   _ <- string xs
                    return (x:xs)
             
 -- Tokenise input
