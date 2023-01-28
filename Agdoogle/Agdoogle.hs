@@ -2,7 +2,8 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Agda.Interaction.Highlighting.Sexp.Sexp where
+module Agdoogle where
+--import Agda.Interaction.Highlighting.Sexp.Sexp
 import Debug.Trace
 import Data.Word
 import Data.Text.Lazy (Text)
@@ -11,8 +12,11 @@ import qualified Data.Text as DT
 import Data.Text.Lazy.IO as W
 
 
-import Control.Applicative
+import Control.Applicative ( Alternative(many, (<|>), empty) )
+import qualified Control.Applicative as CA
 import Data.Char
+import qualified Data.Text.IO as DTI
+import Data.Text.Internal as DTin
 
 import Data.Char (isDigit, digitToInt)
 
@@ -20,12 +24,8 @@ import Data.Text (splitOn, pack)
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(..))
 
---import ParseAgda
---import Agda.Interaction.Highlighting.Sexp.Parsing.ParseSexp
---import Agda.Interaction.Highlighting.Sexp.Parsing.Primitives
 
-
-data Sexp = Atom Text | String String | Integer Integer | Double Double | Cons [Sexp]
+data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons [Sexp]
             deriving (Show, Eq)
 
 constr :: String -> [Sexp] -> Sexp
@@ -42,7 +42,7 @@ toText :: Sexp -> T.Text
 toText (Atom x)   = T.pack $ "Atom " ++ T.unpack x
 toText (Integer k) = T.pack $ "Integer " ++ show k
 toText (Double x) = T.pack $ "Double " ++ show x
-toText (String s) = T.pack $ "String " ++ s
+toText (String s) = T.pack $ "String " ++ show s
 toText (Cons lst) = '[' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ']'
 
 
@@ -65,24 +65,24 @@ atoms = do
   xs <- token (string "Atom")
   col <- many (symbol ":")
   name <- token identifier
-  return (Atom (T.pack (":" ++ name)))
+  return (Atom (T.pack (":" ++  name)))
 
 integers :: Parser Sexp
 integers = do
     xd <- token (string "Integer")
-    number <- many digit
+    number <- many integ
     return (Integer (read number :: Integer))
 
 doubles :: Parser Sexp
 doubles = do
     xd <- token (string "Double")
-    number <- many digit
+    number <- many integ
     return (Double (read number :: Double))
 
 strings :: Parser Sexp
 strings = do
     xd <- token (string "String")
-    str <- token identifier 
+    str <- token identifier
     return (String str)
 
 construct :: Parser Sexp
@@ -93,26 +93,38 @@ construct = do
     return (Cons xss) 
 
 
-textToSexp :: T.Text -> Sexp
-textToSexp text = fst . head  $ parse sps (T.unpack text)
+textToSexp :: DT.Text -> Sexp
+textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
+
+extractTypeFromSearch :: Sexp -> [Sexp]
+extractTypeFromSearch (Cons mod) = concat [types | (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod]
+extractTypeFromSearch _ = [String "nothing found"]
+
+agdoogle :: IO [Sexp]
+agdoogle = do
+    database <- DTI.readFile "SexpDatabase/Builtin.agda-sexp"
+    searchTerm <- DTI.readFile "SexpDatabase/searchTerm.agda-sexp"
+    return (findType (extractTypeFromSearch (textToSexp searchTerm)) (textToSexp database))
+
+  
 
 
 -- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
 findName :: T.Text -> Sexp -> [Sexp]
 findName name (Cons mod) = do
-  (Cons ((Atom ":definition") : ((Cons spls) : spss)))  <- mod
-  (Atom something) <- spls
-  guard (something == name)
-  return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
+    (Cons ((Atom ":definition") : ((Cons spls) : spss)))  <- mod
+    (Atom something) <- spls
+    guard (something == name)
+    return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
 findName name _ = [String "nothing found"]
 
 -- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
 ----- WHAT ABOUT MULTIPLE RESULTS???? -----
-findType :: Sexp -> Sexp -> [Sexp]
+findType :: [Sexp] -> Sexp -> [Sexp]
 findType type' (Cons mod) = do
-    (Cons ((Atom ":definition") : ((Cons name) : ((types) : functions))))  <- mod
+    (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod
     guard (types == type')
-    return (Cons ((Atom ":definition") : ((Cons name) : ((types) : functions))))
+    return (constr "RESULT" ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))
 findType type' _ = [String "nothing found"]
 
 
@@ -130,11 +142,11 @@ findType type' _ = [String "nothing found"]
 --        result = findName (T.pack name) mod
 --        toWrite = toText (constr "result" result)
 
-search :: MonadIO m => Sexp -> Sexp -> m ()
-search querey mod = liftIO (W.writeFile "resulting.txt" toWrite)
-    where
-        result = findType querey mod
-        toWrite = toText (constr "result" (trace (show result) (result)))
+--search :: MonadIO m => Sexp -> Sexp -> m ()
+--search querey mod = liftIO (W.writeFile "resulting.txt" toWrite)
+--    where
+--        result = findType querey mod
+--        toWrite = toText (constr "result" (trace (show result) (result)))
     
 class Sexpable a where
     toSexp :: a -> Sexp
@@ -207,7 +219,15 @@ item = P (\inp -> case inp of
 -- Add a condition
 sat :: (Char -> Bool) -> Parser Char
 sat p = do x <- item
-           if p x then return x else empty
+           if p x then return x else CA.empty
+
+dissat :: (Char -> Bool) -> Parser Char
+dissat p = do x <- item
+              if (p x && x /= ']')  then return x else CA.empty
+
+integ :: Parser Char
+integ = do x <- item
+           if (x == '-' || x == '.' || isDigit x)  then return x else CA.empty
 
 -- Basics
 digit :: Parser Char 
@@ -251,7 +271,8 @@ symbol :: String -> Parser String
 symbol xs = token (string xs)
 
 ident :: Parser String
-ident = do x <- many alphanum
+ident = do x <- many (dissat (/= ' '))
+           --guard (x /= " ")
            return (x)
 
 identifier :: Parser String

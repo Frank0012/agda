@@ -79,7 +79,7 @@ sexpBackend' = Backend'
   }
 
 defaultSexpDir :: String
-defaultSexpDir = "sexp"
+defaultSexpDir = "../../Agdoogle/SexpDatabase"
 
 defaultSexpTypeQuerey  :: String
 defaultSexpTypeQuerey = "Char -> Bool" --Cons [Atom ":type"]

@@ -1,1 +1,3 @@
-Bool -> Bool
+open Agda.Builtin.Bool
+
+searchTerm : Bool -> Bool

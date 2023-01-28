@@ -13,6 +13,7 @@ module Agda.Interaction.Highlighting.Sexp.Base
 
 import Agda.Interaction.Highlighting.Sexp.Sexp
 
+import Data.Int
 
 import Control.DeepSeq
 import Control.Monad
@@ -33,6 +34,8 @@ import GHC.Generics (Generic)
 
 import qualified Network.URI.Encode
 
+import Data.Sequence
+
 import System.FilePath
 import System.Directory
 
@@ -41,6 +44,8 @@ import Paths_Agda
 import Agda.Syntax.TopLevelModuleName
 
 import Agda.Syntax.Literal (Literal(..))
+
+import Agda.Syntax.Position as PO
 
 import Agda.Syntax.Common
 import Agda.Syntax.Abstract as AS
@@ -63,6 +68,7 @@ import Agda.Utils.Pretty
 import Agda.Utils.Impossible
 
 import Debug.Trace
+import Agda.Interaction.Highlighting.Sexp.Sexp (Sexpable(toSexp))
 
 dumpFileExt :: FileType -> String
 dumpFileExt ft =
@@ -227,6 +233,23 @@ instance Sexpable AI.Term where
 
 instance Sexpable AI.Type where
     toSexp (AI.El srt typ) = constr "type" [toSexp srt, toSexp typ]
+    
+------------------------------------------
+--instance Sexpable (PO.Position' ()) where
+--    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
+
+--instance Sexpable PO.Range where
+--    toSexp (PO.NoRange) = constr "norange" []
+--    toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
+
+--instance Sexpable (Seq PO.IntervalWithoutFile) where
+--    toSexp seq = case viewl seq of
+--                  EmptyL    -> constr "nothing" []
+--                  x :< xs     -> constr "intervalwithoutfile" ([(toSexp x), (toSexp xs)])
+
+--instance Sexpable PO.IntervalWithoutFile where
+--    toSexp (PO.Interval istart iend) = constr "interval" [toSexp istart, toSexp iend]
+-------------------------------------------
 
 instance Sexpable t => Sexpable (AI.Level' t) where
     toSexp (AI.Max k lvls) = constr "max" (toSexp k : map toSexp lvls)
