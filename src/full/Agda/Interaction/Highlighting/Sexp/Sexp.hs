@@ -134,7 +134,7 @@ search :: MonadIO m => Sexp -> Sexp -> m ()
 search querey mod = liftIO (W.writeFile "resulting.txt" toWrite)
     where
         result = findType querey mod
-        toWrite = toText (constr "result" (trace (show result) (result)))
+        toWrite = toText (constr "result" result)
     
 class Sexpable a where
     toSexp :: a -> Sexp

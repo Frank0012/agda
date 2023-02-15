@@ -118,15 +118,15 @@ runLogSexpWith = flip runReaderT
 
 
 --- WHERE WE HAVE ALL SEXPS ON HAND -------------------------------------------------
---renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
---renderSourceFile mdl iface defs =
---    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
-renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
-renderSourceFile mdl iface defs = do
-    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
-    return (toText sp)
-      where
-        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
+renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
+renderSourceFile mdl iface defs =
+    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
+--renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
+--renderSourceFile mdl iface defs = do
+--    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
+--    return (toText sp)
+--      where
+--        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 
 
 -- | Convert the search term for type searching
@@ -235,20 +235,20 @@ instance Sexpable AI.Type where
     toSexp (AI.El srt typ) = constr "type" [toSexp srt, toSexp typ]
     
 ------------------------------------------
---instance Sexpable (PO.Position' ()) where
---    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
+instance Sexpable (PO.Position' ()) where
+    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
 
---instance Sexpable PO.Range where
---    toSexp (PO.NoRange) = constr "norange" []
---    toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
+instance Sexpable PO.Range where
+    toSexp (PO.NoRange) = constr "norange" []
+    toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
 
---instance Sexpable (Seq PO.IntervalWithoutFile) where
---    toSexp seq = case viewl seq of
---                  EmptyL    -> constr "nothing" []
---                  x :< xs     -> constr "intervalwithoutfile" ([(toSexp x), (toSexp xs)])
+instance Sexpable (Seq PO.IntervalWithoutFile) where
+    toSexp seq = case viewl seq of
+                  EmptyL    -> constr "nothing" []
+                  x :< xs     -> constr "intervalwithoutfile" ([(toSexp x), (toSexp xs)])
 
---instance Sexpable PO.IntervalWithoutFile where
---    toSexp (PO.Interval istart iend) = constr "interval" [toSexp istart, toSexp iend]
+instance Sexpable PO.IntervalWithoutFile where
+    toSexp (PO.Interval istart iend) = constr "interval" [toSexp istart, toSexp iend]
 -------------------------------------------
 
 instance Sexpable t => Sexpable (AI.Level' t) where
@@ -292,11 +292,11 @@ instance Sexpable TCM.Defn where
     toSexp (TCM.PrimitiveSort {primSortName=q, primSortSort=s}) = constr "sort" [toSexp q, toSexp s]
 
 instance Sexpable AI.Clause where
-    toSexp (AI.Clause {clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
-      constr "clause" [constr "pattern" (map toSexp naps), toSexp tel, sexpType typ, sexpBody bdy]
+    toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
+      constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]
         where sexpBody Nothing    = constr "no-body" []
               sexpBody (Just bdy) = constr "body" [toSexp bdy]
-
+              
               sexpType Nothing = constr "no-type" []
               sexpType (Just (Arg _ t)) = constr "type" [toSexp t]
 

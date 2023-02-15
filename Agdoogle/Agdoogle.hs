@@ -6,26 +6,31 @@ module Agdoogle where
 --import Agda.Interaction.Highlighting.Sexp.Sexp
 import Debug.Trace
 import Data.Word
-import Data.Text.Lazy (Text)
+--import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text as DT
 import Data.Text.Lazy.IO as W
 
+import qualified Data.Text.IO as TIO
+
+
+import System.Process
+import System.Info
 
 import Control.Applicative ( Alternative(many, (<|>), empty) )
 import qualified Control.Applicative as CA
 import Data.Char
-import qualified Data.Text.IO as DTI
-import Data.Text.Internal as DTin
+--import qualified Data.Text.IO as DTI
+--import Data.Text.Internal as DTin
 
 import Data.Char (isDigit, digitToInt)
 
-import Data.Text (splitOn, pack)
+--import Data.Text (splitOn, pack)
 import Control.Monad (guard)
 import Control.Monad.Trans (MonadIO(..))
 
 
-
+import System.IO
 
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
@@ -42,18 +47,42 @@ agdoogle = do
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
     selection <- Prelude.getLine
-    database <- DTI.readFile ("SexpDatabase/" ++ databaseFile)
+    database <- TIO.readFile ("SexpDatabase/" ++ databaseFile)
     if selection == "T" 
-    then do searchTerm <- DTI.readFile "SexpDatabase/searchTerm.agda-sexp" 
+    then do W.putStrLn "Enter type to search"
+            type' <- Prelude.getLine
+            replaceType type'
+            compile
+            searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp" 
             return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
             return (melt . findName name $ (textToSexp database))
 
+replaceType :: String -> IO ()
+replaceType type' = do
+  contents <- TIO.readFile "SearchTerm/searchTerm.agda"
+  let modifiedContents = DT.unlines $ map replaceLine (DT.lines contents)
+  withFile "SearchTerm/searchTerm.agda" WriteMode $ \handle -> do
+    TIO.hPutStr handle modifiedContents
+  where
+    replaceLine line
+      | DT.isInfixOf (DT.pack ":") line = DT.pack ("searchTerm : " ++ type')
+      | otherwise = line
+
+---- TODO: FIX THIS ----
+compile :: IO ()
+compile = do
+  let cmd = case os of
+              "linux" -> "x-terminal-emulator -e bash " ++ "compile.sh"
+              "darwin" -> "open -a Terminal " ++ "compile.sh"
+              "mingw32" -> "start " ++ "%HOMEPATH%/Documents/University/finalYearProject/finalYearGithub/agda/Agdoogle/compile.sh"
+              _ -> error "Unsupported operating system"
+  callCommand cmd
 
 melt :: [Sexp] -> Sexp
 melt []   = String "empty"
-melt [xs] = xs
+melt (x:xs) = x
 
 
 -- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
