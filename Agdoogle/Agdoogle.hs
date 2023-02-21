@@ -1,6 +1,7 @@
 -- | A very simple implementation of S-expressions that can be dumped to Text easily
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Agdoogle where
 --import Agda.Interaction.Highlighting.Sexp.Sexp

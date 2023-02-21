@@ -30,7 +30,11 @@ import Data.Text.Lazy (Text)
 import Data.String (fromString)
 import qualified Data.Text.Lazy as T
 
+import qualified Agda.Utils.FileName as UFN
+
 import GHC.Generics (Generic)
+
+import Data.Strict.Maybe as M
 
 import qualified Network.URI.Encode
 
@@ -118,15 +122,15 @@ runLogSexpWith = flip runReaderT
 
 
 --- WHERE WE HAVE ALL SEXPS ON HAND -------------------------------------------------
-renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
-renderSourceFile mdl iface defs =
-    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
---renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
---renderSourceFile mdl iface defs = do
---    search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
---    return (toText sp)
---      where
---        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
+--renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
+--renderSourceFile mdl iface defs =
+--    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
+renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
+renderSourceFile mdl iface defs = do
+    --search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
+    return (toText sp)
+      where
+        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 
 
 -- | Convert the search term for type searching
@@ -236,11 +240,21 @@ instance Sexpable AI.Type where
     
 ------------------------------------------
 instance Sexpable (PO.Position' ()) where
-    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
+    toSexp (PO.Pn _ posPos posLine posCol ) = trace (show (PO.Pn _ posPos posLine posCol)) (constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)])
 
 instance Sexpable PO.Range where
     toSexp (PO.NoRange) = constr "norange" []
-    toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
+    toSexp (PO.Range srcFile seq) = constr "range" [toSexp srcFile, toSexp seq] --toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
+
+instance Sexpable PO.SrcFile where
+    toSexp (M.Just rngFile) = constr "rngFile" [toSexp rngFile]
+    toSexp M.Nothing        = constr "Nothing" []
+
+instance Sexpable PO.RangeFile where
+    toSexp (PO.RangeFile rangeFilePath rangeFileName) = constr "rangeFileSecondPart" [toSexp rangeFilePath, String "nevermindthat"]
+
+instance Sexpable UFN.AbsolutePath where
+    toSexp (UFN.AbsolutePath txt) = toSexp txt
 
 instance Sexpable (Seq PO.IntervalWithoutFile) where
     toSexp seq = case viewl seq of
@@ -292,13 +306,14 @@ instance Sexpable TCM.Defn where
     toSexp (TCM.PrimitiveSort {primSortName=q, primSortSort=s}) = constr "sort" [toSexp q, toSexp s]
 
 instance Sexpable AI.Clause where
-    toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
-      constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]
-        where sexpBody Nothing    = constr "no-body" []
-              sexpBody (Just bdy) = constr "body" [toSexp bdy]
-              
-              sexpType Nothing = constr "no-type" []
-              sexpType (Just (Arg _ t)) = constr "type" [toSexp t]
+    toSexp = toSexp . getRange
+    --toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
+    --  constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]
+    --    where sexpBody Nothing    = constr "no-body" []
+    --          sexpBody (Just bdy) = constr "body" [toSexp bdy]
+    --          
+    --          sexpType Nothing = constr "no-type" []
+    --          sexpType (Just (Arg _ t)) = constr "type" [toSexp t]
 
 instance Sexpable a => Sexpable (AI.Pattern' a) where
   toSexp (AI.VarP _ x) = toSexp x
@@ -313,8 +328,8 @@ instance Sexpable DBPatVar where
   toSexp (AI.DBPatVar n k) = constr "pattern-var" [toSexp n, toSexp k]
 
 instance Sexpable a => Sexpable (NamedArg a) where
-  toSexp (Arg _ (Named {nameOf=Nothing, namedThing=x})) = constr "arg-noname" [toSexp x]
-  toSexp (Arg _ (Named {nameOf=Just n,  namedThing=x})) = constr "arg-name" [toSexp n, toSexp x]
+  toSexp (Arg _ (Named {nameOf=Data.Maybe.Nothing, namedThing=x})) = constr "arg-noname" [toSexp x]
+  toSexp (Arg _ (Named {nameOf=Data.Maybe.Just n,  namedThing=x})) = constr "arg-name" [toSexp n, toSexp x]
 
 instance Sexpable NamedName where
   toSexp (WithOrigin {woThing=Ranged {rangedThing=s}}) = toSexp s
