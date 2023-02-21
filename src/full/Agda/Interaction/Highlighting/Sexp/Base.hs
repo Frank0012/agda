@@ -240,7 +240,7 @@ instance Sexpable AI.Type where
     
 ------------------------------------------
 instance Sexpable (PO.Position' ()) where
-    toSexp (PO.Pn _ posPos posLine posCol ) = trace (show (PO.Pn _ posPos posLine posCol)) (constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)])
+    toSexp (PO.Pn _ posPos posLine posCol ) = trace (show ([posPos, posLine, posCol])) (constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)])
 
 instance Sexpable PO.Range where
     toSexp (PO.NoRange) = constr "norange" []
@@ -306,14 +306,13 @@ instance Sexpable TCM.Defn where
     toSexp (TCM.PrimitiveSort {primSortName=q, primSortSort=s}) = constr "sort" [toSexp q, toSexp s]
 
 instance Sexpable AI.Clause where
-    toSexp = toSexp . getRange
-    --toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
-    --  constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]
-    --    where sexpBody Nothing    = constr "no-body" []
-    --          sexpBody (Just bdy) = constr "body" [toSexp bdy]
-    --          
-    --          sexpType Nothing = constr "no-type" []
-    --          sexpType (Just (Arg _ t)) = constr "type" [toSexp t]
+    toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
+      constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]
+        where sexpBody Data.Maybe.Nothing    = constr "no-body" []
+              sexpBody (Data.Maybe.Just bdy) = constr "body" [toSexp bdy]
+              
+              sexpType Data.Maybe.Nothing = constr "no-type" []
+              sexpType (Data.Maybe.Just (Arg _ t)) = constr "type" [toSexp t]
 
 instance Sexpable a => Sexpable (AI.Pattern' a) where
   toSexp (AI.VarP _ x) = toSexp x
