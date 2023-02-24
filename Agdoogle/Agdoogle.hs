@@ -28,7 +28,7 @@ import Data.Char (isDigit, digitToInt)
 
 --import Data.Text (splitOn, pack)
 import Control.Monad (guard)
-import Control.Monad.Trans (MonadIO(..))
+--import Control.Monad.Trans (MonadIO(..))
 
 
 import System.IO
@@ -54,8 +54,8 @@ agdoogle = do
             type' <- Prelude.getLine
             replaceType type'
             compile
-            searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp" 
-            return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
+            searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
+            trace (show (searchTerm)) (return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
             return (melt . findName name $ (textToSexp database))
@@ -94,6 +94,8 @@ findName name (Cons mod) = do
     guard (something == (':' `T.cons` name))
     return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
 findName name _ = [String "nothing found"]
+
+-- | Return position information from the found definition
 
 -- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
 ----- WHAT ABOUT MULTIPLE RESULTS???? -----
