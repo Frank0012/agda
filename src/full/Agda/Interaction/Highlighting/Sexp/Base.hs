@@ -163,8 +163,10 @@ modToFile m ext = Network.URI.Encode.encode $ render (pretty m) <.> ext
 
 -- | Conversion to S-expressions
 
+
+-- | New change: adding the binding site to the sexp
 instance Sexpable Name where
-    toSexp n = Atom (T.pack $ prettyShow $ nameConcrete n)
+    toSexp n = trace ("\nNAMECONCRETE" ++ (show (nameConcrete n)) ++ "CLOSENAMECONCRETE" ++ "\nNAMEBINDINGSITE" ++ (show (nameBindingSite n)) ++ "CLOSENAMEBINGINGSITE") (constr "finalName" [(Atom (T.pack $ prettyShow $ nameConcrete n)), (toSexp (nameBindingSite n))])
 
 instance Sexpable ModuleName where
     toSexp (MName lst) = constr "module-name" $ map toSexp lst
@@ -240,7 +242,7 @@ instance Sexpable AI.Type where
     
 ------------------------------------------
 instance Sexpable (PO.Position' ()) where
-    toSexp (PO.Pn _ posPos posLine posCol ) = trace (show ([posPos, posLine, posCol])) (constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)])
+    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
 
 instance Sexpable PO.Range where
     toSexp (PO.NoRange) = constr "norange" []
@@ -289,9 +291,9 @@ instance Sexpable AI.Sort where
         sexpify (AI.DummyS s) = constr "sort-dummy" [toSexp s]
 
 instance Sexpable TCM.Definition where
-    toSexp d = constr "definition" [ toSexp (TCM.defName d),
-                                     toSexp (TCM.defType d),
-                                     toSexp (TCM.theDef d)
+    toSexp d = constr "definition" [ (toSexp (TCM.defName d)),--trace ("\nNAMEOPEN" ++ (show (TCM.defName d)) ++ "NAMECLOSE") (toSexp (TCM.defName d)),
+                                     (toSexp (TCM.defType d)),--trace ("\nTYPEOPEN" ++ (show (TCM.defType d)) ++ "TYPECLOSE") (toSexp (TCM.defType d)),
+                                     (toSexp (TCM.theDef d))--trace ("\nDEFINITIONOPEN" ++ (show (TCM.theDef d)) ++ "DEFINITIONCLOSE") (toSexp (TCM.theDef d))
                                     ]
 instance Sexpable TCM.Defn where
     toSexp (TCM.Axiom {}) = constr "axiom" []
