@@ -32,6 +32,11 @@ import Control.Monad (guard)
 
 
 import System.IO
+import Data.Text (Text, index, count)
+import GHC.Float (fromRat'')
+
+
+------------TO INVESTIGATE: MULTIPLE RESULTS--------------------
 
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
@@ -55,7 +60,7 @@ agdoogle = do
             replaceType type'
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
-            trace (show (searchTerm)) (return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)))
+            return (melt .findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
             return (melt . findName name $ (textToSexp database))
@@ -96,6 +101,51 @@ findName name (Cons mod) = do
 findName name _ = [String "nothing found"]
 
 -- | Return position information from the found definition
+-- definition is made up of : cons definition [[name], [type], [defn]]
+-- where defn is a definition from TypeCheckingMond.Defn. [defn] has the 
+-- location information that we need
+-- defn for datatype = [Atom :data [[sort] [name of first constructor] [name of second constructor] [name of third...etc]]]
+-- constructors are of the form = [Atom :name [[module name], [datatype name], [constructor name]]]
+-- constructor names are of the form = [Atom :finalname, Atom thename, [Atom :range, [range], [Atom :intervalwithoutfile, [Atom :interval, [startposition], [endposition] ]]]]
+-- | TODO : MIGHT NEED TO UPDATE THIS IMPLEMENTATION TO DEAL WITH PROPER SEXP CONSTRUCTION FROM THE BACKEND. IE: CONS [CONS[CONS[]]] (RIGHT DEEP TREE)
+returnRange :: Sexp -> [Sexp]
+returnRange (Cons [resultAtom , definitionAtom , definition, types, (Cons datas)]) = do
+    --trace ("hi1") (return (trace ("0") ("0")))
+    --trace (show (Cons [resultAtom , definitionAtom , definition, types, (Cons datas)])) (return "20000")
+    --Cons ((Cons name) : ((Cons typing) : defn)) <- datas
+    --trace (show (Cons ((Cons name) : ((Cons typing) : defn)))) (return "1")
+    Cons ((Atom a) : ((Cons srt) : constructornames)) <- datas
+    --trace (show (Cons ((Atom a) : ((Cons srt) : constructornames)))) (return "2")
+    --trace ("hi2") (return (trace ("0") ("0")))
+    --Cons ((Atom name) : (modulename : (datatypename : constructorname))) <- constructornames
+    Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- constructornames
+    --trace (show (Cons ((Atom name) : (modulename : (datatypename : constructorname))))) (return "3")
+    trace (show (Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]])) (return "4")
+    trace ("hi3") (return (trace ("0") ("0")))
+    --Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- constructorname
+    trace (show (Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]])) (return "4")
+    trace ("hi4") (return (trace ("0") ("0")))
+    return (Cons (startpos ++ endpos))
+returnRange f = trace (show f) [String "nothing"]
+
+-- | Given filepath and location information in the form of an Sexp, return source code at location
+returnSourceCode :: FilePath -> Integer -> IO [Text]
+returnSourceCode path loc = do
+    file <- TIO.readFile path
+    --Cons (atompos : (Integer smth : rest)) <- loc
+    --lineno = index file smth
+
+    return (DT.lines file)
+
+-- | Return the line number which the given character postition falls on
+getLineFromString :: Int -> String -> String
+getLineFromString num str = reverse (dropNextLine (reverse (take num str))) ++ (dropNextLine (drop num str))
+
+dropNextLine :: String -> String
+dropNextLine [] = []
+dropNextLine ('\n' : str) = ""
+dropNextLine (s:str) = s : dropNextLine str
+
 
 -- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
 ----- WHAT ABOUT MULTIPLE RESULTS???? -----
@@ -105,6 +155,7 @@ findType type' (Cons mod) = do
     guard (types == type')
     return (constr "RESULT" ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))
 findType type' _ = [String "nothing found"]
+
 
 
 
