@@ -166,7 +166,7 @@ modToFile m ext = Network.URI.Encode.encode $ render (pretty m) <.> ext
 
 -- | New change: adding the binding site to the sexp
 instance Sexpable Name where
-    toSexp n = trace ("\nNAMECONCRETE" ++ (show (nameConcrete n)) ++ "CLOSENAMECONCRETE" ++ "\nNAMEBINDINGSITE" ++ (show (nameBindingSite n)) ++ "CLOSENAMEBINGINGSITE") (constr "finalName" [(Atom (T.pack $ prettyShow $ nameConcrete n)), (toSexp (nameBindingSite n))])
+    toSexp n = constr "finalName" [(Atom (T.pack $ prettyShow $ nameConcrete n)), (toSexp (nameBindingSite n))]
 
 instance Sexpable ModuleName where
     toSexp (MName lst) = constr "module-name" $ map toSexp lst
@@ -245,22 +245,22 @@ instance Sexpable (PO.Position' ()) where
     toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
 
 instance Sexpable PO.Range where
-    toSexp (PO.NoRange) = constr "norange" []
+    toSexp (PO.NoRange) = constr "noRange" []
     toSexp (PO.Range srcFile seq) = constr "range" [toSexp srcFile, toSexp seq] --toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
 
 instance Sexpable PO.SrcFile where
-    toSexp (M.Just rngFile) = constr "rngFile" [toSexp rngFile]
-    toSexp M.Nothing        = constr "Nothing" []
+    toSexp (M.Just rngFile) = constr "srcFile" [toSexp rngFile]
+    toSexp M.Nothing        = constr "rngNothing" []
 
 instance Sexpable PO.RangeFile where
-    toSexp (PO.RangeFile rangeFilePath rangeFileName) = constr "rangeFileSecondPart" []--[toSexp rangeFilePath, String "nevermindthat"]
+    toSexp (PO.RangeFile rangeFilePath rangeFileName) = constr "rngFile" []--[toSexp rangeFilePath, String "nevermindthat"]
 
 instance Sexpable UFN.AbsolutePath where
     toSexp (UFN.AbsolutePath txt) = toSexp txt
 
 instance Sexpable (Seq PO.IntervalWithoutFile) where
     toSexp seq = case viewl seq of
-                  EmptyL    -> constr "nothing" []
+                  EmptyL    -> constr "noInterval" []
                   x :< xs     -> constr "intervalwithoutfile" ([(toSexp x), (toSexp xs)])
 
 instance Sexpable PO.IntervalWithoutFile where

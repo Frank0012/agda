@@ -41,10 +41,6 @@ import GHC.Float (fromRat'')
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
 
-extractTypeFromSearch :: Sexp -> [Sexp]
-extractTypeFromSearch (Cons mod) = concat [types | (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod]
-extractTypeFromSearch _ = [String "nothing found"]
-
 agdoogle :: IO Sexp
 agdoogle = do
     W.putStrLn "Enter file to search"
@@ -60,7 +56,7 @@ agdoogle = do
             replaceType type'
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
-            return (melt .findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
+            return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
             return (melt . findName name $ (textToSexp database))
@@ -88,17 +84,42 @@ compile = do
 
 melt :: [Sexp] -> Sexp
 melt []   = String "empty"
-melt (x:xs) = x
+melt x = Cons x
+
+extractTypeFromSearch :: Sexp -> [Sexp]
+extractTypeFromSearch (Cons mod) = concat [types | (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod]
+extractTypeFromSearch _ = [String "nothing found"]
 
 
 -- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
 findName :: T.Text -> Sexp -> [Sexp]
 findName name (Cons mod) = do
-    (Cons ((Atom ":definition") : ((Cons spls) : spss)))  <- mod
-    (Atom something) <- spls
+    (Cons ((Atom ":definition") : ((Cons [nameAtom, Cons modulename, Cons defname]) : spss)))  <- mod
+    (Atom something) <- defname
     guard (something == (':' `T.cons` name))
-    return (Cons ((Atom ":definition") : ((Cons spls) : spss)))
+    return (Cons ((Atom ":definition") : ((Cons [nameAtom, Cons modulename, Cons defname]) : spss)))
 findName name _ = [String "nothing found"]
+
+-- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
+----- WHAT ABOUT MULTIPLE RESULTS???? -----
+findType :: [Sexp] -> Sexp -> [Sexp]
+findType type' (Cons mod) = --do
+    --trace ("trying to find this type " ++ (show type')) ("wassup")
+    --(Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : defs))))  <- mod
+    --trace ("supposedly the matching type " ++ (show types)) ("hi")
+    --guard (removeRangeFromType types == removeRangeFromType type')
+    --return (constr "RESULT" ((Atom ":definition") : ((Cons name) : ((Cons types) : defs))))
+
+    [Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : defs))) | 
+    (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : defs)))) <- mod, 
+    removeRangeFromType types == removeRangeFromType type']
+findType type' _ = [String "nothing found"]
+
+removeRangeFromType :: [Sexp] -> [Sexp]
+removeRangeFromType [] = []
+removeRangeFromType (Cons (Atom ":position" : (Integer n : (Integer x : (Integer q : [])))) : more) = (Atom ":position") : (removeRangeFromType more)
+removeRangeFromType ((Cons s) : more) = (Cons (removeRangeFromType s)) : removeRangeFromType more
+removeRangeFromType (s:str) = s : removeRangeFromType str
 
 -- | Return position information from the found definition
 -- definition is made up of : cons definition [[name], [type], [defn]]
@@ -110,32 +131,10 @@ findName name _ = [String "nothing found"]
 -- | TODO : MIGHT NEED TO UPDATE THIS IMPLEMENTATION TO DEAL WITH PROPER SEXP CONSTRUCTION FROM THE BACKEND. IE: CONS [CONS[CONS[]]] (RIGHT DEEP TREE)
 returnRange :: Sexp -> [Sexp]
 returnRange (Cons [resultAtom , definitionAtom , definition, types, (Cons datas)]) = do
-    --trace ("hi1") (return (trace ("0") ("0")))
-    --trace (show (Cons [resultAtom , definitionAtom , definition, types, (Cons datas)])) (return "20000")
-    --Cons ((Cons name) : ((Cons typing) : defn)) <- datas
-    --trace (show (Cons ((Cons name) : ((Cons typing) : defn)))) (return "1")
     Cons ((Atom a) : ((Cons srt) : constructornames)) <- datas
-    --trace (show (Cons ((Atom a) : ((Cons srt) : constructornames)))) (return "2")
-    --trace ("hi2") (return (trace ("0") ("0")))
-    --Cons ((Atom name) : (modulename : (datatypename : constructorname))) <- constructornames
     Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- constructornames
-    --trace (show (Cons ((Atom name) : (modulename : (datatypename : constructorname))))) (return "3")
-    trace (show (Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]])) (return "4")
-    trace ("hi3") (return (trace ("0") ("0")))
-    --Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- constructorname
-    trace (show (Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]])) (return "4")
-    trace ("hi4") (return (trace ("0") ("0")))
     return (Cons (startpos ++ endpos))
 returnRange f = trace (show f) [String "nothing"]
-
--- | Given filepath and location information in the form of an Sexp, return source code at location
-returnSourceCode :: FilePath -> Integer -> IO [Text]
-returnSourceCode path loc = do
-    file <- TIO.readFile path
-    --Cons (atompos : (Integer smth : rest)) <- loc
-    --lineno = index file smth
-
-    return (DT.lines file)
 
 -- | Return the line number which the given character postition falls on
 getLineFromString :: Int -> String -> String
@@ -147,36 +146,8 @@ dropNextLine ('\n' : str) = ""
 dropNextLine (s:str) = s : dropNextLine str
 
 
--- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
------ WHAT ABOUT MULTIPLE RESULTS???? -----
-findType :: [Sexp] -> Sexp -> [Sexp]
-findType type' (Cons mod) = do
-    (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod
-    guard (types == type')
-    return (constr "RESULT" ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))
-findType type' _ = [String "nothing found"]
 
 
-
-
--- | Output found function from agda module to file
---search :: String -> Sexp -> IO ()
---search name mod = W.writeFile "test/result.txt" toWrite
---    where
---        result = findList (T.pack name) mod
---        toWrite = toText (constr "result" result)
-
---search :: MonadIO m => String -> Sexp -> m ()
---search name mod = liftIO (W.writeFile "resulting.txt" toWrite)
---    where
---        result = findName (T.pack name) mod
---        toWrite = toText (constr "result" result)
-
---search :: MonadIO m => Sexp -> Sexp -> m ()
---search querey mod = liftIO (W.writeFile "resulting.txt" toWrite)
---    where
---        result = findType querey mod
---        toWrite = toText (constr "result" (trace (show result) (result)))
     
 
 data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons [Sexp]
