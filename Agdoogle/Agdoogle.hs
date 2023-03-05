@@ -41,7 +41,7 @@ import GHC.Float (fromRat'')
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
 
-agdoogle :: IO Sexp
+agdoogle :: IO [Sexp]
 agdoogle = do
     W.putStrLn "Enter file to search"
     databaseFile <- Prelude.getLine
@@ -56,10 +56,13 @@ agdoogle = do
             replaceType type'
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
-            return (melt . findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
+            -- Returning range inromation here
+            trace (show ([ returnRangeData x | x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)])) (return "[]")
+            -- End of returning ranged information
+            return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
-            return (melt . findName name $ (textToSexp database))
+            return (findName name $ (textToSexp database))
 
 replaceType :: String -> IO ()
 replaceType type' = do
@@ -129,12 +132,21 @@ removeRangeFromType (s:str) = s : removeRangeFromType str
 -- constructors are of the form = [Atom :name [[module name], [datatype name], [constructor name]]]
 -- constructor names are of the form = [Atom :finalname, Atom thename, [Atom :range, [range], [Atom :intervalwithoutfile, [Atom :interval, [startposition], [endposition] ]]]]
 -- | TODO : MIGHT NEED TO UPDATE THIS IMPLEMENTATION TO DEAL WITH PROPER SEXP CONSTRUCTION FROM THE BACKEND. IE: CONS [CONS[CONS[]]] (RIGHT DEEP TREE)
-returnRange :: Sexp -> [Sexp]
-returnRange (Cons [resultAtom , definitionAtom , definition, types, (Cons datas)]) = do
-    Cons ((Atom a) : ((Cons srt) : constructornames)) <- datas
-    Cons [Atom finalname, Atom thename, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- constructornames
-    return (Cons (startpos ++ endpos))
-returnRange f = trace (show f) [String "nothing"]
+returnRangeData :: Sexp -> [Sexp]
+returnRangeData (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
+    
+    -- Get data type name location
+    Cons dataName <- tail (tail names)
+    Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]] <- dataName
+
+    -- Now get the constructor names location
+    constructorList <- tail (tail datas)
+    let ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
+    
+    let constructorRanges = [ Cons (constructorstartpos ++ constructorendpos) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
+    
+    return (Cons [Cons (startpos ++ endpos) , Cons constructorRanges])
+returnRangeData f = trace (show f) [String "nothing"]
 
 -- | Return the line number which the given character postition falls on
 getLineFromString :: Int -> String -> String
