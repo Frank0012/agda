@@ -49,7 +49,8 @@ agdoogle = do
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
     selection <- Prelude.getLine
-    database <- TIO.readFile ("SexpDatabase/" ++ databaseFile)
+    database <- TIO.readFile ("SexpDatabase/" ++ databaseFile ++ ".agda-sexp")
+    sourceCode <- TIO.readFile ("SearchTerm/" ++ databaseFile ++ ".agda")
     if selection == "T" 
     then do W.putStrLn "Enter type to search"
             type' <- Prelude.getLine
@@ -57,12 +58,35 @@ agdoogle = do
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             -- Returning range inromation here
-            trace (show ([ returnRangeData x | x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)])) (return "[]")
+            let result = [ returnRangeData (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
+            let ranges = [ ranges | Cons ranges <- (concat result)]
+
+            let positionFromRange = [ x | Integer x <- (concat ranges)]
+            let finalResult = [String (getLineFromString x (DT.unpack sourceCode)) | x <- positionFromRange]
+            
+            --trace ("FINALRESULT" ++ show finalResult) (return "hi")
+            
+            --return ([Cons (String "RESULTS" : finalResult)])
+            
+            return finalResult
+            --return (String "RESULT RESULT RESULT !!!! " : (concat result))
             -- End of returning ranged information
-            return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
+            --return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
             return (findName name $ (textToSexp database))
+
+
+-- | Return the line number which the given character postition falls on
+getLineFromString :: Integer -> String -> String
+getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
+
+dropNextLine :: String -> String
+dropNextLine [] = []
+dropNextLine ('\n' : str) = ""
+dropNextLine (s:str) = s : dropNextLine str
+
+
 
 replaceType :: String -> IO ()
 replaceType type' = do
@@ -134,28 +158,37 @@ removeRangeFromType (s:str) = s : removeRangeFromType str
 -- | TODO : MIGHT NEED TO UPDATE THIS IMPLEMENTATION TO DEAL WITH PROPER SEXP CONSTRUCTION FROM THE BACKEND. IE: CONS [CONS[CONS[]]] (RIGHT DEEP TREE)
 returnRangeData :: Sexp -> [Sexp]
 returnRangeData (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
-    
+
     -- Get data type name location
-    Cons dataName <- tail (tail names)
-    Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]] <- dataName
+    -- Cons dataName <- tail (tail names)
+    --trace ("SHOWING STRT  " ++ show strt) ("hi")
+    --trace ("RANGES  " ++ show ranges) ("h")
+    --trace ("constructorRanges  " ++ show constructorRanges) ("ggg")
 
     -- Now get the constructor names location
-    constructorList <- tail (tail datas)
-    let ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
+    --constructorList <- tail (tail datas)
+    --let ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
     
-    let constructorRanges = [ Cons (constructorstartpos ++ constructorendpos) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
+    --let constructorRanges = [ (head (tail constructorstartpos)) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
+    -- Ignore end position
+    --trace (show (length constructorRanges)) ("ya dun know")
+    --trace ("FINAL OUTPUT " ++ show (Cons ((head (tail (head strt))) :  constructorRanges))) ("you don't know me!")
     
-    return (Cons [Cons (startpos ++ endpos) , Cons constructorRanges])
+    --Checking for postulates
+
+
+    
+    if (head datas) == Atom ":axiom" then return (Cons [head (tail (head outerRange))]) else return (Cons ((head (tail (head outerRange))) :  constructorRanges))
+    --return (Cons ((head (tail (head outerRange))) :  constructorRanges))
+    where
+        outerRange = [ startpos | Cons [ Atom fn, Atom n, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- [head (reverse names)]]
+        ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
+        constructorRanges = [ (head (tail constructorstartpos)) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
+
 returnRangeData f = trace (show f) [String "nothing"]
 
--- | Return the line number which the given character postition falls on
-getLineFromString :: Int -> String -> String
-getLineFromString num str = reverse (dropNextLine (reverse (take num str))) ++ (dropNextLine (drop num str))
+--rangesForEach :: [Sexp] -> [Sexp]
 
-dropNextLine :: String -> String
-dropNextLine [] = []
-dropNextLine ('\n' : str) = ""
-dropNextLine (s:str) = s : dropNextLine str
 
 
 
