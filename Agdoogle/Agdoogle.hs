@@ -14,6 +14,7 @@ import Data.Text.Lazy.IO as W
 
 import qualified Data.Text.IO as TIO
 
+--import Data.List.Split
 
 import System.Process
 import System.Info
@@ -41,7 +42,7 @@ import GHC.Float (fromRat'')
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
 
-agdoogle :: IO [Sexp]
+agdoogle :: IO () --[Sexp]
 agdoogle = do
     W.putStrLn "Enter file to search"
     databaseFile <- Prelude.getLine
@@ -55,31 +56,66 @@ agdoogle = do
     then do W.putStrLn "Enter type to search"
             type' <- Prelude.getLine
             replaceType type'
-            compile
+            --compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             -- Returning range inromation here
             let result = [ returnRangeData (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
             let ranges = [ ranges | Cons ranges <- (concat result)]
+            
+            --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
 
-            let positionFromRange = [ x | Integer x <- (concat ranges)]
-            let finalResult = [String (getLineFromString x (DT.unpack sourceCode)) | x <- positionFromRange]
+            trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
+
+            -----   GOT TO ADD ON THE END OF STATEMENT CHARACTERS FOR LINES WITH CODE -----
+            
+
+            let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
+            --let positionFromRange = [ x | Integer x <- (concat ranges)]
+            
+            --let finalResult = [String (getLineFromString x (DT.unpack (prepareSource sourceCode))) | x <- positionFromRange]
             
             --trace ("FINALRESULT" ++ show finalResult) (return "hi")
             
             --return ([Cons (String "RESULTS" : finalResult)])
             
-            return finalResult
+            --print("RESULT")
+            mapM_ print (concat groupedPositions)
+
+            --return () --finalResult
             --return (String "RESULT RESULT RESULT !!!! " : (concat result))
             -- End of returning ranged information
             --return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
     else do W.putStrLn "Enter name"
             name  <- W.getLine
-            return (findName name $ (textToSexp database))
 
+            let result = [ returnRangeData (Cons x) | Cons x <- findName name $ (textToSexp database)]
+            let ranges = [ ranges | Cons ranges <- (concat result)]
+   
+
+            let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
+
+            mapM_ print (concat groupedPositions)
+
+            --print (findName name $ (textToSexp database))
+            --return (findName name $ (textToSexp database))
+
+forEachDef :: [Sexp] -> DT.Text -> [String]
+forEachDef ((Integer x) : xs) str = getLineFromString x (DT.unpack (prepareSource str)) : (forEachDef xs str)
+forEachDef _                 _   = []
+
+
+prettify :: Sexp -> String
+prettify (String str) = str
 
 -- | Return the line number which the given character postition falls on
 getLineFromString :: Integer -> String -> String
 getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
+
+prepareSource :: DT.Text -> DT.Text
+prepareSource str = DT.intercalate (DT.pack "\n") cleanedText --[ DT.append (x) (DT.pack " ") | x <- (DT.splitOn (DT.pack "\n") (str))-- , x /= (DT.pack " ") && x /= (DT.pack "") ]
+    where
+        splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
+        cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
 
 dropNextLine :: String -> String
 dropNextLine [] = []
@@ -159,21 +195,6 @@ removeRangeFromType (s:str) = s : removeRangeFromType str
 returnRangeData :: Sexp -> [Sexp]
 returnRangeData (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
 
-    -- Get data type name location
-    -- Cons dataName <- tail (tail names)
-    --trace ("SHOWING STRT  " ++ show strt) ("hi")
-    --trace ("RANGES  " ++ show ranges) ("h")
-    --trace ("constructorRanges  " ++ show constructorRanges) ("ggg")
-
-    -- Now get the constructor names location
-    --constructorList <- tail (tail datas)
-    --let ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
-    
-    --let constructorRanges = [ (head (tail constructorstartpos)) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
-    -- Ignore end position
-    --trace (show (length constructorRanges)) ("ya dun know")
-    --trace ("FINAL OUTPUT " ++ show (Cons ((head (tail (head strt))) :  constructorRanges))) ("you don't know me!")
-    
     --Checking for postulates
 
 
