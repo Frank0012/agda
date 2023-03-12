@@ -59,7 +59,7 @@ agdoogle = do
             --compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             -- Returning range inromation here
-            let result = [ returnRangeData (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
+            let result = [ returnRangeFunction (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
             let ranges = [ ranges | Cons ranges <- (concat result)]
             
             --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
@@ -99,9 +99,10 @@ agdoogle = do
             --print (findName name $ (textToSexp database))
             --return (findName name $ (textToSexp database))
 
+
 forEachDef :: [Sexp] -> DT.Text -> [String]
 forEachDef ((Integer x) : xs) str = getLineFromString x (DT.unpack (prepareSource str)) : (forEachDef xs str)
-forEachDef _                 _   = []
+forEachDef _                  _   = []
 
 
 prettify :: Sexp -> String
@@ -112,7 +113,7 @@ getLineFromString :: Integer -> String -> String
 getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
 
 prepareSource :: DT.Text -> DT.Text
-prepareSource str = DT.intercalate (DT.pack "\n") cleanedText --[ DT.append (x) (DT.pack " ") | x <- (DT.splitOn (DT.pack "\n") (str))-- , x /= (DT.pack " ") && x /= (DT.pack "") ]
+prepareSource str = DT.intercalate (DT.pack "\n") cleanedText 
     where
         splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
         cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
@@ -145,9 +146,7 @@ compile = do
               _ -> error "Unsupported operating system"
   callCommand cmd
 
-melt :: [Sexp] -> Sexp
-melt []   = String "empty"
-melt x = Cons x
+
 
 extractTypeFromSearch :: Sexp -> [Sexp]
 extractTypeFromSearch (Cons mod) = concat [types | (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : functions))))  <- mod]
@@ -172,10 +171,12 @@ findType type' (Cons mod) = --do
     --trace ("supposedly the matching type " ++ (show types)) ("hi")
     --guard (removeRangeFromType types == removeRangeFromType type')
     --return (constr "RESULT" ((Atom ":definition") : ((Cons name) : ((Cons types) : defs))))
-
+    
+    --trace ("HERE IS A MATCHING TYPE") ()
+    
     [Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : defs))) | 
     (Cons ((Atom ":definition") : ((Cons name) : ((Cons types) : defs)))) <- mod, 
-    removeRangeFromType types == removeRangeFromType type']
+    removeRangeFromType types == removeRangeFromType type'] 
 findType type' _ = [String "nothing found"]
 
 removeRangeFromType :: [Sexp] -> [Sexp]
@@ -183,6 +184,8 @@ removeRangeFromType [] = []
 removeRangeFromType (Cons (Atom ":position" : (Integer n : (Integer x : (Integer q : [])))) : more) = (Atom ":position") : (removeRangeFromType more)
 removeRangeFromType ((Cons s) : more) = (Cons (removeRangeFromType s)) : removeRangeFromType more
 removeRangeFromType (s:str) = s : removeRangeFromType str
+
+
 
 -- | Return position information from the found definition
 -- definition is made up of : cons definition [[name], [type], [defn]]
@@ -196,21 +199,90 @@ returnRangeData :: Sexp -> [Sexp]
 returnRangeData (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
 
     --Checking for postulates
-
-
-    
-    if (head datas) == Atom ":axiom" then return (Cons [head (tail (head outerRange))]) else return (Cons ((head (tail (head outerRange))) :  constructorRanges))
+    if (head datas) == Atom ":axiom" then 
+        return (Cons [head (tail (head outerRange))]) else 
+            return (Cons ((head (tail (head outerRange))) :  constructorRanges))
     --return (Cons ((head (tail (head outerRange))) :  constructorRanges))
     where
-        outerRange = [ startpos | Cons [ Atom fn, Atom n, Cons [Atom rng, range, Cons [Atom intervalwithoutfile, Cons [Atom interval, Cons startpos, Cons endpos], extra]]] <- [head (reverse names)]]
+        outerRange = [ startpos | Cons [Atom fn, 
+                                        Atom n, 
+                                        Cons [Atom rng, 
+                                        range, 
+                                        Cons [Atom intervalwithoutfile, 
+                                        Cons [Atom interval, 
+                                        Cons startpos, 
+                                        Cons endpos], 
+                                        extra]]] <- [head (reverse names)]]
+
         ranges = [head (reverse x) | (Cons x) <- tail (tail datas)]
-        constructorRanges = [ (head (tail constructorstartpos)) | Cons [ Atom finnme, Atom nme,  Cons [Atom constructorrng, constructorrange, Cons [Atom constructorintervalwithoutfile, Cons [Atom constructorinterval, Cons constructorstartpos, Cons constructorendpos], constructorextra]]] <- ranges ]
 
-returnRangeData f = trace (show f) [String "nothing"]
+        constructorRanges = [ (head (tail constructorstartpos)) | Cons [Atom finnme, 
+                                                                        Atom nme,  
+                                                                        Cons [Atom constructorrng, 
+                                                                        constructorrange, 
+                                                                        Cons [Atom constructorintervalwithoutfile, 
+                                                                        Cons [Atom constructorinterval, 
+                                                                        Cons constructorstartpos, 
+                                                                        Cons constructorendpos], 
+                                                                        constructorextra]]] <- ranges ]
 
---rangesForEach :: [Sexp] -> [Sexp]
+returnRangeData f = [String "No range data found"]
 
 
+
+
+
+
+returnRangeFunction :: Sexp -> [Sexp]
+returnRangeFunction (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
+    
+    --trace ("NAMES " ++ (show names)) ("")
+    
+    --trace ("BODIES " ++ (show bodies)) ("")
+
+    --trace ("CONSTRUCTORS " ++ (show constructors)) ("")
+    
+    --trace ("FINALNAMES " ++ (show finalnames)) ("")
+    
+    --trace ("OUTERRANGE " ++ (show (( head (tail (head outerRange))) :  constructorRanges))) ("")
+
+    if (head datas) == Atom ":axiom" then return (Cons [head (tail (head outerRange))]) else return (Cons ((head (tail (head outerRange))) :  constructorRanges))
+
+    where 
+        outerRange = [ startpos | Cons [Atom fn, 
+                                        Atom n, 
+                                        Cons [Atom rng, 
+                                        range, 
+                                        Cons [Atom intervalwithoutfile, 
+                                        Cons [Atom interval, 
+                                        Cons startpos, 
+                                        Cons endpos], 
+                                        extra]]] <- [head (reverse names)]]
+
+        clauses = [ clause | Cons clause <- datas]
+
+        bodies = [  head (reverse clause) | clause <- clauses ]
+
+        constructors = [ constr | Cons [Atom ":body", Cons constr] <- bodies]
+
+        bodyNames = [ head (tail constructor) | constructor <- constructors]
+
+        finalnames = [ head (reverse name) | Cons name <- bodyNames]
+
+        --ranges = [ head (reverse fname) | [AtomCons [Atom name, Cons fname] <- constructors]
+
+        constructorRanges = [ (head (tail constructorstartpos)) | Cons [ Atom finnme, 
+                                                              Atom nme,  
+                                                              Cons [Atom constructorrng, 
+                                                              constructorrange, 
+                                                              Cons [Atom constructorintervalwithoutfile, 
+                                                              Cons [Atom constructorinterval, 
+                                                              Cons constructorstartpos, 
+                                                              Cons constructorendpos], 
+                                                              constructorextra]]] <- finalnames]
+
+
+returnRangeFunction f = [String "No range data found"]
 
 
 
@@ -220,7 +292,7 @@ data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons
             deriving (Show, Eq)
 
 constr :: String -> [Sexp] -> Sexp
-constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst) --trace ("CALLING    " ++ show (Cons (Atom (':' `T.cons` (T.pack head)) : lst)))  (Cons (Atom (':' `T.cons` (T.pack head)) : lst))
+constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst)
 
 --toText :: Sexp -> T.Text
 --toText (Atom x)   = x
@@ -267,11 +339,6 @@ instance Sexpable Double where
 
 instance Sexpable Word64 where
     toSexp w = Integer (toInteger w)
-
-
-
-
-
 
 
 
