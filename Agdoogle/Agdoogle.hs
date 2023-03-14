@@ -49,6 +49,7 @@ agdoogle = do
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
+    W.putStrLn "[F] = full name and type"
     selection <- Prelude.getLine
     database <- TIO.readFile ("SexpDatabase/" ++ databaseFile ++ ".agda-sexp")
     sourceCode <- TIO.readFile ("SearchTerm/" ++ databaseFile ++ ".agda")
@@ -59,12 +60,12 @@ agdoogle = do
             --compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             -- Returning range inromation here
-            let result = [ returnRangeFunction (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
+            let result = [ returnRange (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
             let ranges = [ ranges | Cons ranges <- (concat result)]
             
             --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
 
-            trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
+            --trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
 
             -----   GOT TO ADD ON THE END OF STATEMENT CHARACTERS FOR LINES WITH CODE -----
             
@@ -85,12 +86,25 @@ agdoogle = do
             --return (String "RESULT RESULT RESULT !!!! " : (concat result))
             -- End of returning ranged information
             --return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
-    else do W.putStrLn "Enter name"
+    else (if selection == "N" then 
+        do  W.putStrLn "Enter name"
             name  <- W.getLine
+            
+            --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
 
-            let result = [ returnRangeData (Cons x) | Cons x <- findName name $ (textToSexp database)]
+            
+            --inputHandle <- openFile text ReadMode 
+            --hSetEncoding inputHandle utf8
+            --theInput <- hGetContents inputHandle
+            --outputHandle <- openFile ("a"++text) WriteMode
+            --hSetEncoding outputHandle utf8
+            --hPutStr outputHandle (unlist . proc . lines $ theInput)
+            --hClose outputHandle -- I guess this one is optional in this case.
+
+            let result = [ returnRange (Cons x) | Cons x <- findName name $ (textToSexp database)]
             let ranges = [ ranges | Cons ranges <- (concat result)]
-   
+            
+            --trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
 
             let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
 
@@ -98,6 +112,7 @@ agdoogle = do
 
             --print (findName name $ (textToSexp database))
             --return (findName name $ (textToSexp database))
+        else do W.putStrLn "Enter name and type")
 
 
 forEachDef :: [Sexp] -> DT.Text -> [String]
@@ -185,6 +200,22 @@ removeRangeFromType (Cons (Atom ":position" : (Integer n : (Integer x : (Integer
 removeRangeFromType ((Cons s) : more) = (Cons (removeRangeFromType s)) : removeRangeFromType more
 removeRangeFromType (s:str) = s : removeRangeFromType str
 
+
+returnRange :: Sexp -> [Sexp]
+returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
+
+    return (Cons [head (tail (head outerRange))]) 
+    
+    where
+        outerRange = [ startpos | Cons [Atom fn, 
+                                        Atom n, 
+                                        Cons [Atom rng, 
+                                        range, 
+                                        Cons [Atom intervalwithoutfile, 
+                                        Cons [Atom interval, 
+                                        Cons startpos, 
+                                        Cons endpos], 
+                                        extra]]] <- [head (reverse names)]]
 
 
 -- | Return position information from the found definition
