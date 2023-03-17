@@ -128,7 +128,7 @@ recursiveNameSearch filePaths name = do
     let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
     let result = [ ((fst file) , (returnRange (Cons x))) | 
                  file <- fileTextsList,
-                 reverse (drop 5 (reverse (fst file))) `elem` filePaths, 
+                 reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles, 
                  Cons x <- findName name $ textToSexp (snd file)]
 
     result
