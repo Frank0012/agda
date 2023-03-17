@@ -63,7 +63,7 @@ agdoogle = do
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
         
-            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("SearchTerm/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
+            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
             mapM_ print (concat groupedPositions)
 --let result = [ returnRange (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
             --let ranges = [ ranges | Cons ranges <- (concat result)]
@@ -89,7 +89,7 @@ agdoogle = do
             
             --let ranges = [ ranges | (path, positions) <- rs, pos <- positions]
 
-            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("SearchTerm/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
+            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
 
             mapM_ print (concat groupedPositions)
             --Prelude.putStrLn (show sp)
