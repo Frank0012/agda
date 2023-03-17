@@ -31,93 +31,130 @@ import Data.Char (isDigit, digitToInt)
 import Control.Monad (guard)
 --import Control.Monad.Trans (MonadIO(..))
 
+import System.Directory
+
 
 import System.IO
 import Data.Text (Text, index, count)
 import GHC.Float (fromRat'')
+import System.IO.Unsafe
+import GHC.Core.Type (resultIsLevPoly)
 
 
 ------------TO INVESTIGATE: MULTIPLE RESULTS--------------------
 
 textToSexp :: DT.Text -> Sexp
-textToSexp text = fst . head  $ parse sps (DT.unpack text) --(trace (DT.unpack text) (DT.unpack text))
+textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
 agdoogle :: IO () --[Sexp]
 agdoogle = do
-    W.putStrLn "Enter file to search"
-    databaseFile <- Prelude.getLine
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
     W.putStrLn "[F] = full name and type"
     selection <- Prelude.getLine
-    database <- TIO.readFile ("SexpDatabase/" ++ databaseFile ++ ".agda-sexp")
-    sourceCode <- TIO.readFile ("SearchTerm/" ++ databaseFile ++ ".agda")
+    --database <- TIO.readFile ("SexpDatabase/" ++ databaseFile ++ ".agda-sexp")
+    --sourceCode <- TIO.readFile ("SearchTerm/" ++ databaseFile ++ ".agda")
     if selection == "T" 
     then do W.putStrLn "Enter type to search"
-            type' <- Prelude.getLine
-            replaceType type'
+            --type' <- Prelude.getLine
+            --replaceType type'
             --compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
-            -- Returning range inromation here
-            let result = [ returnRange (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
-            let ranges = [ ranges | Cons ranges <- (concat result)]
+            let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
+        
+            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("SearchTerm/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
+            mapM_ print (concat groupedPositions)
+--let result = [ returnRange (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
+            --let ranges = [ ranges | Cons ranges <- (concat result)]
             
             --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
 
-            --trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
 
             -----   GOT TO ADD ON THE END OF STATEMENT CHARACTERS FOR LINES WITH CODE -----
             
 
-            let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
-            --let positionFromRange = [ x | Integer x <- (concat ranges)]
-            
-            --let finalResult = [String (getLineFromString x (DT.unpack (prepareSource sourceCode))) | x <- positionFromRange]
-            
-            --trace ("FINALRESULT" ++ show finalResult) (return "hi")
-            
-            --return ([Cons (String "RESULTS" : finalResult)])
-            
-            --print("RESULT")
-            mapM_ print (concat groupedPositions)
+            --let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
+    
+            --mapM_ print (concat groupedPositions)
 
-            --return () --finalResult
-            --return (String "RESULT RESULT RESULT !!!! " : (concat result))
-            -- End of returning ranged information
-            --return (findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database))
+        
     else (if selection == "N" then 
         do  W.putStrLn "Enter name"
             name  <- W.getLine
             
-            --trace (show (zip [1..1000000] (DT.unpack (prepareSource sourceCode)))) (return "hi")
 
             
-            --inputHandle <- openFile text ReadMode 
-            --hSetEncoding inputHandle utf8
-            --theInput <- hGetContents inputHandle
-            --outputHandle <- openFile ("a"++text) WriteMode
-            --hSetEncoding outputHandle utf8
-            --hPutStr outputHandle (unlist . proc . lines $ theInput)
-            --hClose outputHandle -- I guess this one is optional in this case.
-
-            let result = [ returnRange (Cons x) | Cons x <- findName name $ (textToSexp database)]
-            let ranges = [ ranges | Cons ranges <- (concat result)]
+            let result = recursiveNameSearch getSexpDatabaseFiles name
             
-            --trace ("HERE ARE THE RESULTS " ++ show result) (return "hi") 
+            --let ranges = [ ranges | (path, positions) <- rs, pos <- positions]
 
-            let groupedPositions = ["RESULT" : (forEachDef x sourceCode) | x <- ranges]
+            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("SearchTerm/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
 
             mapM_ print (concat groupedPositions)
+            --Prelude.putStrLn (show sp)
+            
+            --let result = [ returnRange (Cons x) | Cons x <- findName name $ textToSexp database]
+            
+            
 
-            --print (findName name $ (textToSexp database))
-            --return (findName name $ (textToSexp database))
+            --let groupedPositions = ["RESULT" : (forEachDef x (head x)) | x <- ranges]
+
+            
+
+            
+
         else do W.putStrLn "Enter name and type")
 
-
-forEachDef :: [Sexp] -> DT.Text -> [String]
-forEachDef ((Integer x) : xs) str = getLineFromString x (DT.unpack (prepareSource str)) : (forEachDef xs str)
+-- Return the definitions from the source code (lists of strings)
+forEachDef :: [Integer] -> DT.Text -> [String]
+forEachDef (x : xs) str = getLineFromString x (DT.unpack (prepareSource str)) : (forEachDef xs str)
 forEachDef _                  _   = []
+
+getSexpDatabaseFiles :: [FilePath]
+getSexpDatabaseFiles = unsafePerformIO . listDirectory $ "SexpDatabase/"
+
+getAgdaDatabaseFiles :: [FilePath]
+getAgdaDatabaseFiles = unsafePerformIO . listDirectory $ "AgdaDatabase/"
+
+
+
+
+recursiveNameSearch :: [FilePath] -> T.Text -> [(FilePath, [Integer])]
+recursiveNameSearch filePaths name = do
+    --Extract a file list from the IO file list
+
+    --Read the file contents and deconstruct IO monad
+    let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
+    let result = [ ((fst file) , (returnRange (Cons x))) | 
+                 file <- fileTextsList,
+                 reverse (drop 5 (reverse (fst file))) `elem` filePaths, 
+                 Cons x <- findName name $ textToSexp (snd file)]
+
+    result
+
+
+recursiveTypeSearch :: [FilePath] -> Text -> [(FilePath, [Integer])]
+recursiveTypeSearch filePaths searchTerm = do
+    --Extract a file list from the IO file list
+
+    --Read the file contents and deconstruct IO monad
+    let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
+    let result = [ ((fst file) , (returnRange (Cons x))) | 
+                 file <- fileTextsList,
+                 -- Make sure file exists in Agda Database 
+                 reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles,
+                 Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ textToSexp (snd file)
+                ]
+
+    result
+
+
+
+
+
+
+
 
 
 prettify :: Sexp -> String
@@ -201,19 +238,19 @@ removeRangeFromType ((Cons s) : more) = (Cons (removeRangeFromType s)) : removeR
 removeRangeFromType (s:str) = s : removeRangeFromType str
 
 
-returnRange :: Sexp -> [Sexp]
+returnRange :: Sexp -> [Integer]
 returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
-
-    return (Cons [head (tail (head outerRange))]) 
+    --trace (show names) ("hi")
+    return (head outerRange) 
     
     where
-        outerRange = [ startpos | Cons [Atom fn, 
+        outerRange = [ pospos | Cons [Atom fn, 
                                         Atom n, 
                                         Cons [Atom rng, 
                                         range, 
                                         Cons [Atom intervalwithoutfile, 
                                         Cons [Atom interval, 
-                                        Cons startpos, 
+                                        Cons [Atom pos, Integer pospos, Integer line, Integer col], 
                                         Cons endpos], 
                                         extra]]] <- [head (reverse names)]]
 

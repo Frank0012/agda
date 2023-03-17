@@ -88,7 +88,6 @@ initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
   { sexpFlagEnabled       = False
   , sexpFlagDir           = defaultSexpDir
-  , sexpFlagTypeQuerey    = defaultSexpTypeQuerey
   }
 
 sexpOptsOfFlags :: SexpFlags -> SexpOptions
@@ -104,9 +103,6 @@ sexpFlags =
     , Option []     ["sexp-dir"] (ReqArg sexpDirFlag "DIR")
                     ("directory in which s-expression files are placed (default: " ++
                      defaultSexpDir ++ ")")
-    , Option []     ["sexp-tQuerey"] (ReqArg sexpTypeQuereyFlag "TQUEREY")
-                    ("type signature to search s-expression files for (default: " ++
-                     defaultSexpTypeQuerey ++ ")")
     ]
 
 sexpFlag :: Flag SexpFlags
@@ -122,21 +118,21 @@ runLogSexpWithMonadDebug :: MonadDebug m => LogSexpT m a -> m a
 runLogSexpWithMonadDebug = runLogSexpWith $ reportS "sexp" 1
 
 preCompileSexp :: (MonadIO m, MonadDebug m) => SexpFlags -> m SexpEnv
-preCompileSexp flags = trace (show "----------------------------------PRECOMPILESEXP---------------------------------") runLogSexpWithMonadDebug $ do
+preCompileSexp flags = runLogSexpWithMonadDebug $ do
   let sexpDir = sexpFlagDir flags
   prepareOutputDirectory sexpDir
   return $ SexpEnv sexpDir
 
 preModuleSexp :: Applicative m => SexpEnv -> IsMain -> TopLevelModuleName -> Maybe FilePath -> m (Recompile () ())
-preModuleSexp _env _isMain _modName _ifacePath = trace (show "----------------------------------PREMODULESEXP---------------------------------") pure $ Recompile ()
+preModuleSexp _env _isMain _modName _ifacePath = pure $ Recompile ()
 
 compileDefSexp :: Applicative m => SexpEnv -> () -> IsMain -> Definition -> m Definition
-compileDefSexp _env _menv _isMain def = trace (show "----------------------------------COMPILESEXP---------------------------------") pure def
+compileDefSexp _env _menv _isMain def = pure def
 
 postModuleSexp :: (MonadIO m, MonadDebug m, ReadTCState m) => SexpEnv -> () -> IsMain -> TopLevelModuleName -> [Definition] -> m ()
 postModuleSexp env menv _isMain modName defs = do
   sexpSrc <- srcFileOfInterface modName <$> curIF
-  trace (show "----------------------------------POSTMODULESEXP---------------------------------") runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
+  runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
     where
       opts = SexpOptions (sexpDir env) defaultSexpTypeQuerey --(defaultSexpFunc)
 
