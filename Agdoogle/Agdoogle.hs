@@ -70,7 +70,7 @@ agdoogle = do
         
             --let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
             let groupedPositions = [(forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
-                                    path, 
+                                    reverse (drop 5 (reverse path)), 
                                     getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
             
@@ -102,7 +102,7 @@ agdoogle = do
 
 
             let groupedPositions = [((forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))), 
-                                    path, 
+                                    reverse (drop 5 (reverse path)), 
                                     getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
                     
@@ -170,12 +170,6 @@ recursiveTypeSearch filePaths searchTerm = do
                 ]
 
     result
-
-
-
-
-
-
 
 
 
