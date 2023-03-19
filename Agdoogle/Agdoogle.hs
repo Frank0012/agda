@@ -136,7 +136,7 @@ recursiveTypeSearch filePaths searchTerm = do
 
 -- | Return the line number which the given character postition falls on
 getLineFromString :: Integer -> String -> String
-getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
+getLineFromString num str = trace (show num) (reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str)))
 
 prepareSource :: DT.Text -> DT.Text
 prepareSource str = DT.intercalate (DT.pack "\n") cleanedText 
