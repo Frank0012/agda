@@ -41,7 +41,12 @@ import System.IO.Unsafe
 import GHC.Core.Type (resultIsLevPoly)
 
 
-------------TO INVESTIGATE: MULTIPLE RESULTS--------------------
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+----------------------------TO DO : UTF8 OUTPUT----------------------------
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+
 
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
@@ -63,8 +68,14 @@ agdoogle = do
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
         
-            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
-            mapM_ print (concat groupedPositions)
+            --let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
+            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
+                                    path, 
+                                    getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+                                    (path, positions) <- result]
+            
+            --Prelude.putStrLn (show groupedPositions)
+            mapM_ print groupedPositions
 --let result = [ returnRange (Cons x) | Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ (textToSexp database)]
             --let ranges = [ ranges | Cons ranges <- (concat result)]
             
@@ -89,10 +100,15 @@ agdoogle = do
             
             --let ranges = [ ranges | (path, positions) <- rs, pos <- positions]
 
-            let groupedPositions = ["RESULT" : (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) | (path, positions) <- result]
 
-            mapM_ print (concat groupedPositions)
-            --Prelude.putStrLn (show sp)
+            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))), 
+                                    path, 
+                                    getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+                                    (path, positions) <- result]
+                    
+            
+            mapM_ print (groupedPositions)
+            --Prelude.putStrLn (show groupedPositions)
             
             --let result = [ returnRange (Cons x) | Cons x <- findName name $ textToSexp database]
             
@@ -107,9 +123,12 @@ agdoogle = do
         else do W.putStrLn "Enter name and type")
 
 -- Return the definitions from the source code (lists of strings)
-forEachDef :: [Integer] -> DT.Text -> [String]
-forEachDef (x : xs) str = getLineFromString x (DT.unpack (prepareSource str)) : (forEachDef xs str)
-forEachDef _                  _   = []
+--forEachDef :: [Integer] -> DT.Text -> [Text]
+--forEachDef (x : xs) str = (DT.pack (getLineFromString x (DT.unpack (prepareSource str)))) : (forEachDef xs str)
+--forEachDef _                  _   = []
+
+forEachDef :: Integer -> DT.Text -> Text
+forEachDef x str = (DT.pack (getLineFromString x (DT.unpack (prepareSource str))))
 
 getSexpDatabaseFiles :: [FilePath]
 getSexpDatabaseFiles = unsafePerformIO . listDirectory $ "SexpDatabase/"
@@ -118,15 +137,18 @@ getAgdaDatabaseFiles :: [FilePath]
 getAgdaDatabaseFiles = unsafePerformIO . listDirectory $ "AgdaDatabase/"
 
 
+getLineNumber :: [Text] -> Text -> Int
+getLineNumber (x : file) line  = if (DT.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
+getLineNumber _ line = 0
 
 
-recursiveNameSearch :: [FilePath] -> T.Text -> [(FilePath, [Integer])]
+recursiveNameSearch :: [FilePath] -> T.Text -> [(FilePath, Integer)]
 recursiveNameSearch filePaths name = do
     --Extract a file list from the IO file list
 
     --Read the file contents and deconstruct IO monad
     let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
-    let result = [ ((fst file) , (returnRange (Cons x))) | 
+    let result = [ ((fst file) , head (returnRange (Cons x))) | 
                  file <- fileTextsList,
                  reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles, 
                  Cons x <- findName name $ textToSexp (snd file)]
@@ -134,13 +156,13 @@ recursiveNameSearch filePaths name = do
     result
 
 
-recursiveTypeSearch :: [FilePath] -> Text -> [(FilePath, [Integer])]
+recursiveTypeSearch :: [FilePath] -> Text -> [(FilePath, Integer)]
 recursiveTypeSearch filePaths searchTerm = do
     --Extract a file list from the IO file list
 
     --Read the file contents and deconstruct IO monad
     let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
-    let result = [ ((fst file) , (returnRange (Cons x))) | 
+    let result = [ ((fst file) , head (returnRange (Cons x))) | 
                  file <- fileTextsList,
                  -- Make sure file exists in Agda Database 
                  reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles,
