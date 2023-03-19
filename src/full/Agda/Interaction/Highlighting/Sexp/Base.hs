@@ -87,7 +87,6 @@ dumpFileExt ft =
 
 data SexpOptions = SexpOptions
   { sexpOptDir                  :: FilePath
-  , sexpOptTypeQuerey           :: String
   } deriving Eq
 
 -- | Internal type bundling the information related to a module source file
@@ -121,22 +120,11 @@ runLogSexpWith :: Monad m => SexpLogAction m -> LogSexpT m a -> m a
 runLogSexpWith = flip runReaderT
 
 
---- WHERE WE HAVE ALL SEXPS ON HAND -------------------------------------------------
---renderSourceFile :: TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> Text
---renderSourceFile mdl iface defs =
---    toText $ constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
 renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
 renderSourceFile mdl iface defs = do
-    --search (Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":pi",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Char"]]],Cons [Atom ":anonymous",Cons [Atom ":type",Cons [Atom ":sort",Cons [Atom ":sort-set",Cons [Atom ":max",Integer 0]]],Cons [Atom ":apply",Cons [Atom ":name",Atom "Builtin",Atom "Bool"]]]]]]) sp
     return (toText sp)
       where
-        sp = constr "module" (toSexp mdl : map toSexp defs) --trace (show (constr "module" (toSexp mdl : map toSexp defs))) (constr "module" (toSexp mdl : map toSexp defs))
-
-
--- | Convert the search term for type searching
-
-convertSearchTerm :: String -> Text --[TCM.Definition] -> Text
-convertSearchTerm defs = toText $ toSexp defs --constr "search" (map toSexp defs)
+        sp = constr "module" (toSexp mdl : map toSexp defs) 
 
 
 defaultSexpGen :: (MonadIO m, MonadLogSexp m) => SexpOptions -> SourceFile -> [TCM.Definition] -> m ()
@@ -144,12 +132,9 @@ defaultSexpGen opts (SourceFile moduleName iface) defs = do
   logSexp $ render $ "Generating AST for"  <+> pretty moduleName <+> ((parens (pretty target)) <> ".")
   sexps <- renderSourceFile moduleName iface defs
   liftIO $ UTF8.writeTextToFile target sexps
-  --liftIO $ UTF8.writeTextToFile target func
   where
     ext = dumpFileExt (TCM.iFileType iface)
     target = (sexpOptDir opts) </> modToFile moduleName ext
-    --sexps = renderSourceFile moduleName iface defs
-    --func = convertSearchTerm (sexpOptFunc opts)
 
 prepareOutputDirectory :: MonadIO m => FilePath -> m ()
 prepareOutputDirectory sexpDir = liftIO $ do createDirectoryIfMissing True sexpDir
@@ -246,14 +231,14 @@ instance Sexpable (PO.Position' ()) where
 
 instance Sexpable PO.Range where
     toSexp (PO.NoRange) = constr "noRange" []
-    toSexp (PO.Range srcFile seq) = constr "range" [toSexp srcFile, toSexp seq] --toSexp (PO.Range _ seq) = constr "range" [toSexp seq]
+    toSexp (PO.Range srcFile seq) = constr "range" [toSexp srcFile, toSexp seq]
 
 instance Sexpable PO.SrcFile where
     toSexp (M.Just rngFile) = constr "srcFile" [toSexp rngFile]
     toSexp M.Nothing        = constr "rngNothing" []
 
 instance Sexpable PO.RangeFile where
-    toSexp (PO.RangeFile rangeFilePath rangeFileName) = constr "rngFile" []--[toSexp rangeFilePath, String "nevermindthat"]
+    toSexp (PO.RangeFile rangeFilePath rangeFileName) = constr "rngFile" []
 
 instance Sexpable UFN.AbsolutePath where
     toSexp (UFN.AbsolutePath txt) = toSexp txt
@@ -291,9 +276,9 @@ instance Sexpable AI.Sort where
         sexpify (AI.DummyS s) = constr "sort-dummy" [toSexp s]
 
 instance Sexpable TCM.Definition where
-    toSexp d = constr "definition" [ (toSexp (TCM.defName d)),--trace ("\nNAMEOPEN" ++ (show (TCM.defName d)) ++ "NAMECLOSE") (toSexp (TCM.defName d)),
-                                     (toSexp (TCM.defType d)),--trace ("\nTYPEOPEN" ++ (show (TCM.defType d)) ++ "TYPECLOSE") (toSexp (TCM.defType d)),
-                                     (toSexp (TCM.theDef d))--trace ("\nDEFINITIONOPEN" ++ (show (TCM.theDef d)) ++ "DEFINITIONCLOSE") (toSexp (TCM.theDef d))
+    toSexp d = constr "definition" [ (toSexp (TCM.defName d)),
+                                     (toSexp (TCM.defType d)),
+                                     (toSexp (TCM.theDef d))
                                     ]
 instance Sexpable TCM.Defn where
     toSexp (TCM.Axiom {}) = constr "axiom" []

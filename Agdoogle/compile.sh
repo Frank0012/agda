@@ -1,5 +1,5 @@
 #! usr/bin/bash
 
-cd ~/Documents/University/finalYearProject/finalYearGithub/agda/Agdoogle/SearchTerm
+cd AgdaDatabase
 
 agda --sexp --allow-unsolved-metas searchTerm.agda
