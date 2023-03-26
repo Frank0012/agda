@@ -158,7 +158,7 @@ replaceType :: String -> IO ()
 replaceType type' = do
   contents <- TIO.readFile "AgdaDatabase/searchTerm.agda"
   let modifiedContents = DT.unlines $ map replaceLine (DT.lines contents)
-  withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do         ------Utf8.withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do   -------------------
+  withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do
     TIO.hPutStr handle modifiedContents
   where
     replaceLine line
