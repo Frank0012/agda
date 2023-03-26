@@ -26,6 +26,8 @@ import Data.Char
 
 import Data.Char (isDigit, digitToInt)
 
+import Main.Utf8
+import qualified System.IO.Utf8 as Utf8
 
 import Control.Monad (guard)
 
@@ -50,11 +52,11 @@ textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
 agdoogle :: IO () 
-agdoogle = do
+agdoogle = do ---withUtf8 $ do
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
-    W.putStrLn "[F] = full name and type"
+    --W.putStrLn "[F] = full name and type"
     selection <- Prelude.getLine
 
     if selection == "T" 
@@ -138,8 +140,9 @@ recursiveTypeSearch filePaths searchTerm = do
 getLineFromString :: Integer -> String -> String
 getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
 
+-- Dealing with carriage returns for Windows
 prepareSource :: DT.Text -> DT.Text
-prepareSource str = DT.intercalate (DT.pack "\n") cleanedText 
+prepareSource str = DT.intercalate (DT.pack "\n") cleanedText    ---(if os == "mingw32" then cleanedText else splitText)
     where
         splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
         cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
@@ -155,12 +158,17 @@ replaceType :: String -> IO ()
 replaceType type' = do
   contents <- TIO.readFile "AgdaDatabase/searchTerm.agda"
   let modifiedContents = DT.unlines $ map replaceLine (DT.lines contents)
-  withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do
+  withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do         ------Utf8.withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do   -------------------
     TIO.hPutStr handle modifiedContents
   where
     replaceLine line
       | DT.isInfixOf (DT.pack ":") line = DT.pack ("searchTerm : " ++ type')
       | otherwise = line
+
+
+
+
+
 
 ---- TODO: FIX THIS ----
 compile :: IO ()

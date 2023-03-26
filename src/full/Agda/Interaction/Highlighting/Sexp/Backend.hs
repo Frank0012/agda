@@ -45,7 +45,6 @@ import Control.Monad.Trans (liftIO)
 data SexpFlags = SexpFlags
   { sexpFlagEnabled              :: Bool
   , sexpFlagDir                  :: FilePath
-  , sexpFlagTypeQuerey           :: String
   } deriving (Eq, Generic)
 
 instance NFData SexpFlags
@@ -81,9 +80,6 @@ sexpBackend' = Backend'
 defaultSexpDir :: String
 defaultSexpDir = "../../Agdoogle/SexpDatabase"
 
-defaultSexpTypeQuerey  :: String
-defaultSexpTypeQuerey = "Char -> Bool" --Cons [Atom ":type"]
-
 initialSexpFlags :: SexpFlags
 initialSexpFlags = SexpFlags
   { sexpFlagEnabled       = False
@@ -93,7 +89,6 @@ initialSexpFlags = SexpFlags
 sexpOptsOfFlags :: SexpFlags -> SexpOptions
 sexpOptsOfFlags flags = SexpOptions
   { sexpOptDir = sexpFlagDir flags
-  , sexpOptTypeQuerey = sexpFlagTypeQuerey flags
   }
 
 sexpFlags :: [OptDescr (Flag SexpFlags)]
@@ -110,9 +105,6 @@ sexpFlag o = return $ o { sexpFlagEnabled = True }
 
 sexpDirFlag :: FilePath -> Flag SexpFlags
 sexpDirFlag d o = return $ o { sexpFlagDir = d }
-
-sexpTypeQuereyFlag :: String -> Flag SexpFlags
-sexpTypeQuereyFlag d o = return $ o { sexpFlagTypeQuerey = d }
 
 runLogSexpWithMonadDebug :: MonadDebug m => LogSexpT m a -> m a
 runLogSexpWithMonadDebug = runLogSexpWith $ reportS "sexp" 1
@@ -134,7 +126,7 @@ postModuleSexp env menv _isMain modName defs = do
   sexpSrc <- srcFileOfInterface modName <$> curIF
   runLogSexpWithMonadDebug $ defaultSexpGen opts sexpSrc defs
     where
-      opts = SexpOptions (sexpDir env) defaultSexpTypeQuerey --(defaultSexpFunc)
+      opts = SexpOptions (sexpDir env)
 
 --postCompileSexp :: Applicative m => SexpEnv -> IsMain -> Map TopLevelModuleName () -> m ()
 --postCompileSexp _cenv _isMain _modulesByName = do

@@ -67,10 +67,12 @@ executable Agdoogle
     build-depends:    base ^>=4.16.3.0,
                       text ^>= 1.2.5.0,
                       process ^>= 1.6.13.2,
-                      mtl ^>= 2.2.2
+                      mtl ^>= 2.2.2,
+                      with-utf8 ^>= 1.0.2.3,
+                      directory ^>= 1.3.6.2
 
     -- Directories containing source files.
-    hs-source-dirs:   app
+    hs-source-dirs:   .
 
     -- Base language which the package is written in.
     default-language: Haskell2010
