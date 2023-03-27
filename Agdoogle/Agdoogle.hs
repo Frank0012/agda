@@ -68,7 +68,7 @@ agdoogle = do ---withUtf8 $ do
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
         
-            --trace (TIOU.readFile "AgdaDatabase/Builtin.agda") (return "hi")
+            trace (TIOU.readTextFile "AgdaDatabase/Builtin.agda") (return "hi")
 
             let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
                                     reverse (drop 5 (reverse path)), 
