@@ -1,5 +1,6 @@
 module Main where
 
+--import System.Info
 import Agdoogle
 import Main.Utf8 (withUtf8)
 --import Debug.Trace
@@ -15,6 +16,9 @@ import Main.Utf8 (withUtf8)
 main :: IO ()
 main = withUtf8 $ do
     agdoogle
+
+--main :: IO String
+--main = if os == "mingw32" then return ("windows") else return ("linux or mac")
 
 --main :: IO () 
 --main = withUtf8 $ do

@@ -142,7 +142,7 @@ getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral n
 
 -- Dealing with carriage returns for Windows
 prepareSource :: DT.Text -> DT.Text
-prepareSource str = DT.intercalate (DT.pack "\n") cleanedText    ---(if os == "mingw32" then cleanedText else splitText)
+prepareSource str = if os == "mingw32" then DT.intercalate (DT.pack "\n") cleanedText else str
     where
         splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
         cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
