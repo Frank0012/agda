@@ -70,7 +70,7 @@ agdoogle = do ---withUtf8 $ do
         
             --trace (TIOU.readFile "AgdaDatabase/Builtin.agda") (return "hi")
 
-            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
+            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
                                     reverse (drop 5 (reverse path)), 
                                     getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
