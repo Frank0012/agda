@@ -14,12 +14,12 @@ import Debug.Trace
 --writeData hOut inData = Utf8.withHandle hOut $ do
 --  TIO.hPutStr hOut inData
 
-main :: IO String
+main :: IO ()
 main = withUtf8 $ do
-    --agdoogle
-    file <- TIOU.readFile "AgdaDatabase/Builtin.agda"
-    trace (file) (return "hi")
-    return file
+    agdoogle
+    --file <- TIOU.readFile "AgdaDatabase/Builtin.agda"
+    --trace (file) (return "hi")
+    --return file
 
 --main :: IO String
 --main = if os == "mingw32" then return ("windows") else return ("linux or mac")

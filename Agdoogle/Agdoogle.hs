@@ -52,7 +52,7 @@ import qualified Agda.Utils.IO.UTF8 as TIOU
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
-agdoogle :: IO () 
+agdoogle :: IO ()
 agdoogle = do ---withUtf8 $ do
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
@@ -77,9 +77,10 @@ agdoogle = do ---withUtf8 $ do
             
 
             mapM_ print groupedPositions
+            
 
         
-    else (if selection == "N" then 
+    else  
         do  W.putStrLn "Enter name"
             name  <- W.getLine
             
@@ -93,8 +94,8 @@ agdoogle = do ---withUtf8 $ do
             
             mapM_ print (groupedPositions)
             
+            
 
-        else do W.putStrLn "Enter name and type")
 
 
 forEachDef :: Integer -> DT.Text -> Text
