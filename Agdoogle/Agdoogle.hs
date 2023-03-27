@@ -39,6 +39,7 @@ import System.IO
 import Data.Text (Text, index, count)
 import GHC.Float (fromRat'')
 import System.IO.Unsafe
+import qualified Agda.Utils.IO.UTF8 as TIOU
 
 
 ---------------------------------------------------------------------------
@@ -67,7 +68,8 @@ agdoogle = do ---withUtf8 $ do
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
         
-            
+            --trace (TIOU.readFile "AgdaDatabase/Builtin.agda") (return "hi")
+
             let groupedPositions = [(forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
                                     reverse (drop 5 (reverse path)), 
                                     getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 

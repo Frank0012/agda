@@ -3,7 +3,8 @@ module Main where
 --import System.Info
 import Agdoogle
 import Main.Utf8 (withUtf8)
---import Debug.Trace
+import qualified Agda.Utils.IO.UTF8 as TIOU
+import Debug.Trace
 --import qualified Data.Text.IO as TIO
 --import Data.Text as DT
 --import System.IO
@@ -13,9 +14,12 @@ import Main.Utf8 (withUtf8)
 --writeData hOut inData = Utf8.withHandle hOut $ do
 --  TIO.hPutStr hOut inData
 
-main :: IO ()
+main :: IO String
 main = withUtf8 $ do
-    agdoogle
+    --agdoogle
+    file <- TIOU.readFile "AgdaDatabase/Builtin.agda"
+    trace (file) (return "hi")
+    return file
 
 --main :: IO String
 --main = if os == "mingw32" then return ("windows") else return ("linux or mac")
