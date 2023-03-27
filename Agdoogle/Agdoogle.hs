@@ -42,6 +42,7 @@ import System.IO.Unsafe
 import qualified Agda.Utils.IO.UTF8 as TIOU
 
 
+
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
 ----------------------------TO DO : UTF8 OUTPUT----------------------------
@@ -53,7 +54,7 @@ textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
 agdoogle :: IO ()
-agdoogle = do ---withUtf8 $ do
+agdoogle = do
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
@@ -68,15 +69,20 @@ agdoogle = do ---withUtf8 $ do
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
         
-            trace (TIOU.readTextFile "AgdaDatabase/Builtin.agda") (return "hi")
+            --file <- TIOU.readFile "AgdaDatabase/Builtin.agda"
+
+            --Prelude.putStr file
+            
 
             let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
                                     reverse (drop 5 (reverse path)), 
-                                    getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
             
 
-            mapM_ print groupedPositions
+            --mapM_ Prelude.putStr groupedPositions
+
+            display groupedPositions
             
 
         
@@ -86,20 +92,34 @@ agdoogle = do ---withUtf8 $ do
             
             let result = recursiveNameSearch getSexpDatabaseFiles name
 
-            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))), 
+            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))), 
                                     reverse (drop 5 (reverse path)), 
-                                    getLineNumber (DT.lines (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIO.readFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
                     
             
             mapM_ print (groupedPositions)
             
             
+display :: [(T.Text, [Char], Int)] -> IO ()
+display [] = Prelude.putStr []
+display ((line, file, lineNum) : xs) =  do W.putStr "DEFINITION (" 
+                                           W.putStr line
+                                           W.putStr ") "
+                                           W.putStr "FILE ("
+                                           Prelude.putStr file
+                                           W.putStr ") "
+                                           W.putStr "LINE_NUMBER ("
+                                           Prelude.putStr (show lineNum)
+                                           W.putStrLn ") "
+                                           display xs
 
 
+--forEachDef :: Integer -> DT.Text -> Text
+--forEachDef x str = (DT.pack (getLineFromString x (DT.unpack (prepareSource str))))
 
-forEachDef :: Integer -> DT.Text -> Text
-forEachDef x str = (DT.pack (getLineFromString x (DT.unpack (prepareSource str))))
+forEachDef :: Integer -> T.Text -> T.Text
+forEachDef x str = (T.pack (getLineFromString x (T.unpack (prepareSource str))))
 
 getSexpDatabaseFiles :: [FilePath]
 getSexpDatabaseFiles = unsafePerformIO . listDirectory $ "SexpDatabase/"
@@ -108,9 +128,14 @@ getAgdaDatabaseFiles :: [FilePath]
 getAgdaDatabaseFiles = unsafePerformIO . listDirectory $ "AgdaDatabase/"
 
 
-getLineNumber :: [Text] -> Text -> Int
-getLineNumber (x : file) line  = if (DT.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
+--getLineNumber :: [Text] -> Text -> Int
+--getLineNumber (x : file) line  = if (DT.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
+--getLineNumber _ line = 0
+
+getLineNumber :: [T.Text] -> T.Text -> Int
+getLineNumber (x : file) line  = if (T.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
 getLineNumber _ line = 0
+
 
 
 recursiveNameSearch :: [FilePath] -> T.Text -> [(FilePath, Integer)]
@@ -144,11 +169,18 @@ getLineFromString :: Integer -> String -> String
 getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
 
 -- Dealing with carriage returns for Windows
-prepareSource :: DT.Text -> DT.Text
-prepareSource str = if os == "mingw32" then DT.intercalate (DT.pack "\n") cleanedText else str
+--prepareSource :: DT.Text -> DT.Text
+--prepareSource str = if os == "mingw32" then DT.intercalate (DT.pack "\n") cleanedText else str
+--    where
+--        splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
+--        cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
+
+prepareSource :: T.Text -> T.Text
+prepareSource str = if os == "mingw32" then T.intercalate (T.pack "\n") cleanedText else str
     where
-        splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
-        cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
+        splitText = [ x | x <- (T.splitOn (T.pack "\n") str) ]
+        cleanedText = map (\x -> if x /= (T.pack "") && x /= (T.pack "") then T.append (x) (T.pack " ") else T.append (x) (T.pack "")) splitText
+
 
 dropNextLine :: String -> String
 dropNextLine [] = []
