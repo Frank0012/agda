@@ -105,10 +105,10 @@ display :: [(T.Text, [Char], Int)] -> IO ()
 display [] = Prelude.putStr []
 display ((line, file, lineNum) : xs) =  do W.putStr "DEFINITION (" 
                                            W.putStr line
-                                           W.putStr ") "
+                                           W.putStr "), "
                                            W.putStr "FILE ("
                                            Prelude.putStr file
-                                           W.putStr ") "
+                                           W.putStr "), "
                                            W.putStr "LINE_NUMBER ("
                                            Prelude.putStr (show lineNum)
                                            W.putStrLn ") "
