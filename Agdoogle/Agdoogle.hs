@@ -81,7 +81,7 @@ agdoogle = do
             
 
             --mapM_ Prelude.putStr groupedPositions
-
+            W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
             display groupedPositions
             
 
@@ -97,7 +97,7 @@ agdoogle = do
                                     getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
                                     (path, positions) <- result]
                     
-            
+            W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
             mapM_ print (groupedPositions)
             
             
@@ -121,11 +121,12 @@ display ((line, file, lineNum) : xs) =  do W.putStr "DEFINITION ("
 forEachDef :: Integer -> T.Text -> T.Text
 forEachDef x str = (T.pack (getLineFromString x (T.unpack (prepareSource str))))
 
+-- | All files in the Sexp database excluding searchTerm
 getSexpDatabaseFiles :: [FilePath]
-getSexpDatabaseFiles = unsafePerformIO . listDirectory $ "SexpDatabase/"
+getSexpDatabaseFiles = filter (\x -> (x /= "searchTerm.agda-sexp")) (unsafePerformIO . listDirectory $ "SexpDatabase/")
 
 getAgdaDatabaseFiles :: [FilePath]
-getAgdaDatabaseFiles = unsafePerformIO . listDirectory $ "AgdaDatabase/"
+getAgdaDatabaseFiles = filter (\x -> (reverse (take 4 (reverse x)) == "agda")) (unsafePerformIO . listDirectory $ "AgdaDatabase/")
 
 
 --getLineNumber :: [Text] -> Text -> Int
@@ -192,7 +193,9 @@ dropNextLine (s:str) = s : dropNextLine str
 replaceType :: String -> IO ()
 replaceType type' = do
   contents <- TIO.readFile "AgdaDatabase/searchTerm.agda"
-  let modifiedContents = DT.unlines $ map replaceLine (DT.lines contents)
+  let fileLines = DT.lines contents
+  let fileLinesWithImports = (createImports getImports) ++ filter (\x -> not (DT.isInfixOf (DT.pack "open import") x)) fileLines
+  let modifiedContents = DT.unlines $ map replaceLine fileLinesWithImports
   withFile "AgdaDatabase/searchTerm.agda" WriteMode $ \handle -> do
     TIO.hPutStr handle modifiedContents
   where
@@ -201,6 +204,13 @@ replaceType type' = do
       | otherwise = line
 
 
+-- | Import all files in the Agda database into the search term database. Naive but covers most cases.
+getImports :: [FilePath]
+getImports = filter (\str -> str /= "searchTerm.agda") getAgdaDatabaseFiles
+
+createImports :: [FilePath] -> [Text]
+createImports [] = [DT.pack "open import Agda.Primitive"]
+createImports (x : xs) = DT.pack ("open import " ++ (reverse (drop 5 (reverse x)))) : createImports xs
 
 
 
@@ -395,9 +405,9 @@ string (x:xs) = do _ <- char x
             
 -- Tokenise input
 token :: Parser a  -> Parser a 
-token p  = do space
+token p  = do _ <- space
               v <- p 
-              space
+              _ <- space
               return v
 
 symbol :: String -> Parser String
@@ -405,7 +415,6 @@ symbol xs = token (string xs)
 
 ident :: Parser String
 ident = do x <- many (dissat (/= ' '))
-           --guard (x /= " ")
            return (x)
 
 identifier :: Parser String
@@ -428,32 +437,32 @@ sps = do
 
 atoms :: Parser Sexp
 atoms = do 
-  xs <- token (string "Atom")
-  col <- many (symbol ":")
+  _ <- token (string "Atom")
+  _ <- many (symbol ":")
   name <- token identifier
   return (Atom (T.pack (":" ++  name)))
 
 integers :: Parser Sexp
 integers = do
-    xd <- token (string "Integer")
+    _ <- token (string "Integer")
     number <- many integ
     return (Integer (read number :: Integer))
 
 doubles :: Parser Sexp
 doubles = do
-    xd <- token (string "Double")
+    _ <- token (string "Double")
     number <- many integ
     return (Double (read number :: Double))
 
 strings :: Parser Sexp
 strings = do
-    xd <- token (string "String")
+    _ <- token (string "String")
     str <- token identifier
     return (String str)
 
 construct :: Parser Sexp
 construct = do
-    xs <- token (char '[')
+    _ <- token (char '[')
     xss <- many sps
-    cls <- token (char ']')
+    _ <- token (char ']')
     return (Cons xss) 
