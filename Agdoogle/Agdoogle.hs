@@ -98,7 +98,7 @@ agdoogle = do
                                     (path, positions) <- result]
                     
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
-            mapM_ print (groupedPositions)
+            display groupedPositions
             
             
 display :: [(T.Text, [Char], Int)] -> IO ()
