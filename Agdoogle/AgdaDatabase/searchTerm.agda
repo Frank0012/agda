@@ -8,6 +8,6 @@ open import Builtin
 open import Agda.Primitive
 
 
-searchTerm : (A B : Set) -> Set
+searchTerm : Float -> Float -> Bool
 searchTerm = ?
 

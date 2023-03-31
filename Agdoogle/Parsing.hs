@@ -1,11 +1,16 @@
--- Much of the following code is credited to Graham Hutton
--- from Programming in Haskell second edition and his paper
--- Monadic Parser Combinators written with Erik Meijer
+module Parsing where
+
+import qualified Data.Text.Lazy as T
 import Control.Applicative ( Alternative(many, (<|>), empty) )
-import Control.Monad (guard)
 import qualified Control.Applicative as CA
 import Data.Char
 
+data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons [Sexp]
+            deriving (Show, Eq)
+
+-- Much of the following code is credited to Graham Hutton
+-- from Programming in Haskell second edition and his paper
+-- Monadic Parser Combinators written with Erik Meijer
 newtype Parser a = P (String -> [(a, String)])
 
 instance Functor Parser where
@@ -87,9 +92,9 @@ string (x:xs) = do _ <- char x
             
 -- Tokenise input
 token :: Parser a  -> Parser a 
-token p  = do space
+token p  = do _ <- space
               v <- p 
-              space
+              _ <- space
               return v
 
 symbol :: String -> Parser String
@@ -97,7 +102,6 @@ symbol xs = token (string xs)
 
 ident :: Parser String
 ident = do x <- many (dissat (/= ' '))
-           --guard (x /= " ")
            return (x)
 
 identifier :: Parser String
@@ -105,4 +109,47 @@ identifier = token ident
 
 
 
+sps :: Parser Sexp
+sps = do
+    construct
+    <|>
+    atoms
+    <|> 
+    integers
+    <|>
+    doubles
+    <|>
+    strings
 
+
+atoms :: Parser Sexp
+atoms = do 
+  _ <- token (string "Atom")
+  _ <- many (symbol ":")
+  name <- token identifier
+  return (Atom (T.pack (":" ++  name)))
+
+integers :: Parser Sexp
+integers = do
+    _ <- token (string "Integer")
+    number <- many integ
+    return (Integer (read number :: Integer))
+
+doubles :: Parser Sexp
+doubles = do
+    _ <- token (string "Double")
+    number <- many integ
+    return (Double (read number :: Double))
+
+strings :: Parser Sexp
+strings = do
+    _ <- token (string "String")
+    str <- token identifier
+    return (String str)
+
+construct :: Parser Sexp
+construct = do
+    _ <- token (char '[')
+    xss <- many sps
+    _ <- token (char ']')
+    return (Cons xss) 

@@ -1,4 +1,4 @@
-module Main (main) where
+module Tests where
 
 import Test.HUnit
 import System.Exit

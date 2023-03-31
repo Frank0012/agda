@@ -1,3 +1,4 @@
+-- Entry point for Agdoogle search command line utility
 module Main where
 
 import Agdoogle

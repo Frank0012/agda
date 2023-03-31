@@ -5,6 +5,8 @@
 
 module Agdoogle where
 
+import Parsing
+
 import Debug.Trace
 import Data.Word
 
@@ -19,12 +21,11 @@ import qualified Data.Text.IO as TIO
 import System.Process
 import System.Info
 
-import Control.Applicative ( Alternative(many, (<|>), empty) )
-import qualified Control.Applicative as CA
+
+
 import Data.Char
 
 
-import Data.Char (isDigit, digitToInt)
 
 import Main.Utf8
 import qualified System.IO.Utf8 as Utf8
@@ -43,15 +44,6 @@ import qualified Agda.Utils.IO.UTF8 as TIOU
 
 
 
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-----------------------------TO DO : UTF8 OUTPUT----------------------------
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-
-
-textToSexp :: DT.Text -> Sexp
-textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
 agdoogle :: IO ()
 agdoogle = do
@@ -68,10 +60,6 @@ agdoogle = do
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
-        
-            --file <- TIOU.readFile "AgdaDatabase/Builtin.agda"
-
-            --Prelude.putStr file
             
 
             let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
@@ -100,6 +88,11 @@ agdoogle = do
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
             display groupedPositions
             
+
+textToSexp :: DT.Text -> Sexp
+textToSexp text = fst . head  $ parse sps (DT.unpack text) 
+
+
             
 display :: [(T.Text, [Char], Int)] -> IO ()
 display [] = Prelude.putStr []
@@ -115,8 +108,7 @@ display ((line, file, lineNum) : xs) =  do W.putStr "DEFINITION ("
                                            display xs
 
 
---forEachDef :: Integer -> DT.Text -> Text
---forEachDef x str = (DT.pack (getLineFromString x (DT.unpack (prepareSource str))))
+
 
 forEachDef :: Integer -> T.Text -> T.Text
 forEachDef x str = (T.pack (getLineFromString x (T.unpack (prepareSource str))))
@@ -129,9 +121,6 @@ getAgdaDatabaseFiles :: [FilePath]
 getAgdaDatabaseFiles = filter (\x -> (reverse (take 4 (reverse x)) == "agda")) (unsafePerformIO . listDirectory $ "AgdaDatabase/")
 
 
---getLineNumber :: [Text] -> Text -> Int
---getLineNumber (x : file) line  = if (DT.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
---getLineNumber _ line = 0
 
 getLineNumber :: [T.Text] -> T.Text -> Int
 getLineNumber (x : file) line  = if (T.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
@@ -169,13 +158,8 @@ recursiveTypeSearch filePaths searchTerm = do
 getLineFromString :: Integer -> String -> String
 getLineFromString num str = reverse (dropNextLine (reverse (take (fromIntegral num) str))) ++ (dropNextLine (drop (fromIntegral num) str))
 
--- Dealing with carriage returns for Windows
---prepareSource :: DT.Text -> DT.Text
---prepareSource str = if os == "mingw32" then DT.intercalate (DT.pack "\n") cleanedText else str
---    where
---        splitText = [ x | x <- (DT.splitOn (DT.pack "\n") str) ]
---        cleanedText = map (\x -> if x /= (DT.pack "") && x /= (DT.pack "") then DT.append (x) (DT.pack " ") else DT.append (x) (DT.pack "")) splitText
 
+-- | Windows line numbers are slightly different to UNIX based systems - cleaning here if Windows
 prepareSource :: T.Text -> T.Text
 prepareSource str = if os == "mingw32" then T.intercalate (T.pack "\n") cleanedText else str
     where
@@ -267,202 +251,5 @@ returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
 
     
 
-data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons [Sexp]
-            deriving (Show, Eq)
-
-constr :: String -> [Sexp] -> Sexp
-constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst)
-
---toText :: Sexp -> T.Text
---toText (Atom x)   = x
---toText (Integer k) = T.pack $ show k
---toText (Double x) = T.pack $ show x
---toText (String s) = T.pack $ show s
---toText (Cons lst) = '(' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ')'
-
-toText :: Sexp -> T.Text
-toText (Atom x)   = T.pack $ "Atom " ++ T.unpack x
-toText (Integer k) = T.pack $ "Integer " ++ show k
-toText (Double x) = T.pack $ "Double " ++ show x
-toText (String s) = T.pack $ "String " ++ show s
-toText (Cons lst) = '[' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ']'
 
 
-
-
-
-class Sexpable a where
-    toSexp :: a -> Sexp
-
-instance Sexpable Bool where
-    toSexp False = constr "false" []
-    toSexp True = constr "true" []
-
-instance Sexpable Integer where
-    toSexp k = Integer k
-
-instance Sexpable Int where
-    toSexp k = Integer (toInteger k)
-
-instance Sexpable String where
-    toSexp = String
-
-instance Sexpable T.Text where
-    toSexp t = String $ T.unpack t
-
-instance Sexpable DT.Text where
-    toSexp t = String $ DT.unpack t
-
-instance Sexpable Double where
-    toSexp = Double
-
-instance Sexpable Word64 where
-    toSexp w = Integer (toInteger w)
-
-
-
--- Much of the following code is credited to Graham Hutton
--- from Programming in Haskell second edition and his paper
--- Monadic Parser Combinators written with Erik Meijer
-newtype Parser a = P (String -> [(a, String)])
-
-instance Functor Parser where
-    fmap g p = P (\inp -> case parse p inp of 
-                    [(v, out)] -> [(g v, out)]
-                    _          -> [])
-
-instance Applicative Parser where
-    pure v = P (\inp -> [(v, inp)])
-
-    pg <*> px = P (\inp -> case parse pg inp of 
-                    [(g, out)] -> parse (fmap g px) out
-                    _          -> [])
-
-instance Monad Parser where
-    p >>= f = P (\inp -> case parse p inp of
-                    [(v, out)] -> parse (f v) out
-                    _          -> [])
-
-instance Alternative Parser where
-    empty = P (\inp -> [])
-    p <|> q = P (\inp -> case parse p inp of
-                            []         -> parse q inp
-                            [(v, out)] -> [(v, out)]
-                            _          -> [])
-
-parse :: Parser a  -> String -> [(a, String)]
-parse (P p) inp = p inp
-
--- Parse a single char
-item :: Parser Char
-item = P (\inp -> case inp of
-                    (x:xs) -> [(x, xs)]
-                    _      -> [])
-
--- Add a condition
-sat :: (Char -> Bool) -> Parser Char
-sat p = do x <- item
-           if p x then return x else CA.empty
-
-dissat :: (Char -> Bool) -> Parser Char
-dissat p = do x <- item
-              if (p x && x /= ']')  then return x else CA.empty
-
-integ :: Parser Char
-integ = do x <- item
-           if (x == '-' || x == '.' || isDigit x)  then return x else CA.empty
-
--- Basics
-digit :: Parser Char 
-digit = sat isDigit
-
-lower :: Parser Char
-lower = sat isLower
-
-upper :: Parser Char
-upper = sat isUpper
-
-letter :: Parser Char
-letter = sat isAlpha
-
-alphanum :: Parser Char
-alphanum = sat isAlphaNum
-
-char :: Char -> Parser Char
-char x = sat (== x)
-
--- Handling spacing
-space :: Parser ()
-space  = do _ <- many (sat isSpace)
-            return ()
-
--- Parse strings
-string :: String -> Parser String
-string [] = return []
-string (x:xs) = do _ <- char x
-                   _ <- string xs
-                   return (x:xs)
-            
--- Tokenise input
-token :: Parser a  -> Parser a 
-token p  = do _ <- space
-              v <- p 
-              _ <- space
-              return v
-
-symbol :: String -> Parser String
-symbol xs = token (string xs)
-
-ident :: Parser String
-ident = do x <- many (dissat (/= ' '))
-           return (x)
-
-identifier :: Parser String
-identifier = token ident
-
-
-
-sps :: Parser Sexp
-sps = do
-    construct
-    <|>
-    atoms
-    <|> 
-    integers
-    <|>
-    doubles
-    <|>
-    strings
-
-
-atoms :: Parser Sexp
-atoms = do 
-  _ <- token (string "Atom")
-  _ <- many (symbol ":")
-  name <- token identifier
-  return (Atom (T.pack (":" ++  name)))
-
-integers :: Parser Sexp
-integers = do
-    _ <- token (string "Integer")
-    number <- many integ
-    return (Integer (read number :: Integer))
-
-doubles :: Parser Sexp
-doubles = do
-    _ <- token (string "Double")
-    number <- many integ
-    return (Double (read number :: Double))
-
-strings :: Parser Sexp
-strings = do
-    _ <- token (string "String")
-    str <- token identifier
-    return (String str)
-
-construct :: Parser Sexp
-construct = do
-    _ <- token (char '[')
-    xss <- many sps
-    _ <- token (char ']')
-    return (Cons xss) 
