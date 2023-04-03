@@ -6,43 +6,26 @@
 module Agdoogle where
 
 import Parsing
-
 import Debug.Trace
 import Data.Word
-
 import qualified Data.Text.Lazy as T
 import qualified Data.Text as DT
 import Data.Text.Lazy.IO as W
-
 import qualified Data.Text.IO as TIO
-
-
-
 import System.Process
 import System.Info
-
-
-
 import Data.Char
-
-
-
 import Main.Utf8
 import qualified System.IO.Utf8 as Utf8
-
 import Control.Monad (guard)
-
-
 import System.Directory
-
-
 import System.IO
 import Data.Text (Text, index, count)
 import GHC.Float (fromRat'')
 import System.IO.Unsafe
 import qualified Agda.Utils.IO.UTF8 as TIOU
-
-
+import qualified System.FilePath as SF
+import qualified System.Directory.Recursive as SDR
 
 
 agdoogle :: IO ()
@@ -60,11 +43,10 @@ agdoogle = do
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
             let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
-            
 
-            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))), 
-                                    reverse (drop 5 (reverse path)), 
-                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)), 
+                                    fromSexpToAgda path, 
+                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)))) | 
                                     (path, positions) <- result]
             
 
@@ -77,12 +59,15 @@ agdoogle = do
     else  
         do  W.putStrLn "Enter name"
             name  <- W.getLine
+            -- | Easy way of generating S-expressions
+            replaceType "Bool"
+            compile
             
             let result = recursiveNameSearch getSexpDatabaseFiles name
 
-            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))), 
-                                    reverse (drop 5 (reverse path)), 
-                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path)))))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile ("AgdaDatabase/" ++ reverse (drop 5 (reverse path))))))) | 
+            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))), 
+                                    fromSexpToAgda path, 
+                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)))) | 
                                     (path, positions) <- result]
                     
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
@@ -93,6 +78,12 @@ textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
 
 
+fromSexpToAgda :: FilePath -> FilePath
+fromSexpToAgda fp = head $ filter (\x -> cleanName (SF.dropExtension fp) == normalisePath (SF.makeRelative "AgdaDatabase" (SF.dropExtensions x))) getAgdaDatabaseFiles
+    
+
+cleanName :: FilePath -> FilePath
+cleanName f = map (\x -> if x == '.' then '/' else x) f
             
 display :: [(T.Text, [Char], Int)] -> IO ()
 display [] = Prelude.putStr []
@@ -108,6 +99,11 @@ display ((line, file, lineNum) : xs) =  do W.putStr "DEFINITION ("
                                            display xs
 
 
+normalisePath :: FilePath -> FilePath
+normalisePath path = map (\inp -> if inp == '\\' then '/' else inp) path
+
+containsPath :: FilePath -> [FilePath] -> Bool
+containsPath x y = x `elem` (map normalisePath y)
 
 
 forEachDef :: Integer -> T.Text -> T.Text
@@ -118,10 +114,15 @@ getSexpDatabaseFiles :: [FilePath]
 getSexpDatabaseFiles = filter (\x -> (x /= "searchTerm.agda-sexp")) (unsafePerformIO . listDirectory $ "SexpDatabase/")
 
 getAgdaDatabaseFiles :: [FilePath]
-getAgdaDatabaseFiles = filter (\x -> (reverse (take 4 (reverse x)) == "agda")) (unsafePerformIO . listDirectory $ "AgdaDatabase/")
+getAgdaDatabaseFiles = filter (\x -> (SF.takeExtensions x == ".agda"
+                                   || SF.takeExtensions x == ".lagda"
+                                   || SF.takeExtensions x == ".lagda.md"
+                                   || SF.takeExtensions x == ".lagda.tex"
+                                   || SF.takeExtensions x == ".lagda.rst")) 
+                              (unsafePerformIO . SDR.getDirRecursive $ "AgdaDatabase/")
 
 
-
+-- | Only called when we know there definitely is a matching definition in the file
 getLineNumber :: [T.Text] -> T.Text -> Int
 getLineNumber (x : file) line  = if (T.stripEnd line) == x then 1 else 1 + (getLineNumber file line )
 getLineNumber _ line = 0
@@ -130,24 +131,24 @@ getLineNumber _ line = 0
 
 recursiveNameSearch :: [FilePath] -> T.Text -> [(FilePath, Integer)]
 recursiveNameSearch filePaths name = do
-    
     let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
     let result = [ ((fst file) , head (returnRange (Cons x))) | 
                  file <- fileTextsList,
-                 reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles, 
+                 -- Make sure file exists in Agda Database
+                 containsPath (cleanName . SF.dropExtension $ (fst file)) (map ((SF.makeRelative "AgdaDatabase") . SF.dropExtensions) getAgdaDatabaseFiles), 
                  Cons x <- findName name $ textToSexp (snd file)]
-
+    
     result
 
 
 recursiveTypeSearch :: [FilePath] -> Text -> [(FilePath, Integer)]
 recursiveTypeSearch filePaths searchTerm = do
-
+    
     let fileTextsList = [ (file, (unsafePerformIO (TIO.readFile ("SexpDatabase/" ++ file)))) | file <- filePaths ]
     let result = [ ((fst file) , head (returnRange (Cons x))) | 
                  file <- fileTextsList,
                  -- Make sure file exists in Agda Database 
-                 reverse (drop 5 (reverse (fst file))) `elem` getAgdaDatabaseFiles,
+                 containsPath (cleanName . SF.dropExtension $ (fst file)) (map ((SF.makeRelative "AgdaDatabase") . SF.dropExtensions) getAgdaDatabaseFiles),
                  Cons x <- findType (extractTypeFromSearch (textToSexp searchTerm)) $ textToSexp (snd file)
                 ]
 
@@ -184,24 +185,25 @@ replaceType type' = do
     TIO.hPutStr handle modifiedContents
   where
     replaceLine line
-      | DT.isInfixOf (DT.pack ":") line = DT.pack ("searchTerm : " ++ type')
+      | DT.isInfixOf (DT.pack "postulate") line = DT.pack ("postulate searchTerm : " ++ type')
       | otherwise = line
 
 
 -- | Import all files in the Agda database into the search term database. Naive but covers most cases.
 getImports :: [FilePath]
-getImports = filter (\str -> str /= "searchTerm.agda") getAgdaDatabaseFiles
+getImports = filter (\str -> str /= "AgdaDatabase/searchTerm.agda") getAgdaDatabaseFiles
 
 createImports :: [FilePath] -> [Text]
 createImports [] = [DT.pack "open import Agda.Primitive"]
-createImports (x : xs) = DT.pack ("open import " ++ (reverse (drop 5 (reverse x)))) : createImports xs
+createImports (x : xs) = DT.pack ("open import " ++ (convertToImportName x)) : createImports xs 
 
+convertToImportName :: FilePath -> String
+convertToImportName name = map (\x -> if SF.isPathSeparator x then '.' else x) 
+                               (SF.makeRelative "AgdaDatabase" (SF.dropExtensions name))
 
-
-
----- TODO: FIX THIS ----
+-- | Generate S-expression for searchTerm.agda
 compile :: IO ()
-compile = callCommand "cd AgdaDatabase && agda --sexp --allow-unsolved-metas searchTerm.agda"
+compile = callCommand "cd AgdaDatabase && agda --sexp searchTerm.agda"
 
 
 extractTypeFromSearch :: Sexp -> [Sexp]
@@ -212,10 +214,14 @@ extractTypeFromSearch _ = [String "nothing found"]
 -- | Given a function name and a sexp, return the top level definition clause matching that function name, wrapped in a list
 findName :: T.Text -> Sexp -> [Sexp]
 findName name (Cons mod) = do
-    (Cons ((Atom ":definition") : ((Cons [nameAtom, Cons modulename, Cons defname]) : spss)))  <- mod
-    (Atom something) <- defname
+    (Cons ((Atom ":definition") : ((Cons names) : spss)))  <- mod
+    Cons nameForFunc <- [head (reverse names)]
+    (Atom something) <- nameForFunc
     guard (something == (':' `T.cons` name))
-    return (Cons ((Atom ":definition") : ((Cons [nameAtom, Cons modulename, Cons defname]) : spss)))
+    
+    return (Cons ((Atom ":definition") : ((Cons names) : spss)))
+
+    
 findName name _ = [String "nothing found"]
 
 -- | Given a sexp of a type signature, return the top level definition clause matching that type signature, wrapped in a list
