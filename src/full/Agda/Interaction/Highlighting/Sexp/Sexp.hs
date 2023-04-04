@@ -25,10 +25,10 @@ constr head lst = Cons (Atom (':' `T.cons` (T.pack head)) : lst)
 
 
 toText :: Sexp -> T.Text
-toText (Atom x)   = T.pack $ "Atom " ++ T.unpack x
-toText (Integer k) = T.pack $ "Integer " ++ show k
-toText (Double x) = T.pack $ "Double " ++ show x
-toText (String s) = T.pack $ "String " ++ s
+toText (Atom x)   = T.pack $ "Atom " ++ T.unpack x ++ " "
+toText (Integer k) = T.pack $ "Integer " ++ show k ++ " "
+toText (Double x) = T.pack $ "Double " ++ show x ++ " "
+toText (String s) = T.pack $ "String " ++ s ++ " "
 toText (Cons lst) = '[' `T.cons` (T.intercalate (T.singleton ' ') (map toText lst)) `T.snoc` ']'
 
 

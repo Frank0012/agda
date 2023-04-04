@@ -53,7 +53,7 @@ sat p = do x <- item
 
 dissat :: (Char -> Bool) -> Parser Char
 dissat p = do x <- item
-              if (p x && x /= ']')  then return x else CA.empty
+              if (p x )  then return x else CA.empty
 
 integ :: Parser Char
 integ = do x <- item

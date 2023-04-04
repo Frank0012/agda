@@ -1,18 +1,45 @@
-open import unit-type
-open import Record
-open import nothing
-open import general-notation
-open import Functions3
-open import Functions2
-open import Functions1
-open import empty-type
-open import CrazySymbol
-open import Builtin
-open import extra.Extra
-open import extra.evenMore.EvenMore
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.well-founded
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Vector
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Vector-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.unit-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.sums
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.sums-equality
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.strict-total-order
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.sorting
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.sorting-lemmas
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.searchability
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.regexp
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.products
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.prelude
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.negation
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.natural-numbers-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.natural-numbers-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Maybe
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.List
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.List-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.isomorphisms
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.isomorphism-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.iso-utils
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.insertion-sort
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.index
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.identity-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Hedbergs-Theorem
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.general-notation
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.function-extensionality
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Fin
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Fin-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.empty-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.decidability
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.curry-howard
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Bool
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.Bool-functions
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-trees-type
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-sums
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-sums-as-sums
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-products
+open import afp-learning-2022-2023-master-files-LectureNotes-files.files.LectureNotes.files.binary-products-as-products
 open import Agda.Primitive
 
 
-postulate searchTerm : Bool
-
-
+postulate searchTerm : {A : Type} {B : A -> Type} -> ((x : A) -> B x) -> ((x : A) -> B x) -> Type

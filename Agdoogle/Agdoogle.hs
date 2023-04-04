@@ -52,16 +52,14 @@ agdoogle = do
 
             --mapM_ Prelude.putStr groupedPositions
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
-            display groupedPositions
+            if groupedPositions == [] then W.putStrLn "NO MATCHING TYPES" else display groupedPositions
             
 
         
     else  
         do  W.putStrLn "Enter name"
             name  <- W.getLine
-            -- | Easy way of generating S-expressions
-            replaceType "Bool"
-            compile
+            
             
             let result = recursiveNameSearch getSexpDatabaseFiles name
 
@@ -71,7 +69,7 @@ agdoogle = do
                                     (path, positions) <- result]
                     
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
-            display groupedPositions
+            if groupedPositions == [] then W.putStrLn "NO MATCHING NAMES" else display groupedPositions
             
 
 textToSexp :: DT.Text -> Sexp
@@ -103,7 +101,7 @@ normalisePath :: FilePath -> FilePath
 normalisePath path = map (\inp -> if inp == '\\' then '/' else inp) path
 
 containsPath :: FilePath -> [FilePath] -> Bool
-containsPath x y = x `elem` (map normalisePath y)
+containsPath x y = (normalisePath x) `elem` (map normalisePath y)
 
 
 forEachDef :: Integer -> T.Text -> T.Text
@@ -241,7 +239,7 @@ removeRangeFromType (s:str) = s : removeRangeFromType str
 
 returnRange :: Sexp -> [Integer]
 returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
-    return (head outerRange) 
+    return (head outerRange)
     where
         outerRange = [ pospos | Cons [Atom fn, 
                                         Atom n, 
@@ -252,6 +250,7 @@ returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
                                         Cons [Atom pos, Integer pospos, Integer line, Integer col], 
                                         Cons endpos], 
                                         extra]]] <- [head (reverse names)]]
+--returnRange x = trace (show x) ([5])
 
 
 
