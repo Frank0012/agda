@@ -1,5 +1,3 @@
--- | A very simple implementation of S-expressions that can be dumped to Text easily
-
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
 
@@ -33,44 +31,34 @@ agdoogle = do
     W.putStrLn "Name search or type search?" 
     W.putStrLn "[N] = name"
     W.putStrLn "[T] = type"
-    --W.putStrLn "[F] = full name and type"
     selection <- Prelude.getLine
-
     if selection == "T" 
     then do W.putStrLn "Enter type to search"
             type' <- Prelude.getLine
             replaceType type'
             compile
             searchTerm <- TIO.readFile "SexpDatabase/searchTerm.agda-sexp"
-            let result = recursiveTypeSearch getSexpDatabaseFiles searchTerm
-
-            let groupedPositions = [(forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)), 
-                                    fromSexpToAgda path, 
-                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)))) | 
-                                    (path, positions) <- result]
-            
-
-            --mapM_ Prelude.putStr groupedPositions
+            let matches = recursiveTypeSearch getSexpDatabaseFiles searchTerm
+            let result = searchResult matches
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
-            if groupedPositions == [] then W.putStrLn "NO MATCHING TYPES" else display groupedPositions
-            
-
-        
+            if null result then W.putStrLn "NO MATCHING TYPES" else display result
     else  
         do  W.putStrLn "Enter name"
             name  <- W.getLine
-            
-            
-            let result = recursiveNameSearch getSexpDatabaseFiles name
-
-            let groupedPositions = [((forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))), 
-                                    fromSexpToAgda path, 
-                                    getLineNumber (T.lines (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path))) (forEachDef positions (unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path)))) | 
-                                    (path, positions) <- result]
-                    
+            let matches = recursiveNameSearch getSexpDatabaseFiles name
+            let result = searchResult matches         
             W.putStrLn "AGDOOGLE_SEARCH_RESULTS:"
-            if groupedPositions == [] then W.putStrLn "NO MATCHING NAMES" else display groupedPositions
-            
+            if null result then W.putStrLn "NO MATCHING NAMES" else display result
+
+
+searchResult :: [(String, Integer)] -> [(T.Text, String, Int)]
+searchResult lst = [(lineFromFile, 
+                    fromSexpToAgda path, 
+                    getLineNumber (T.lines file) lineFromFile) | 
+                    (path, positions) <- lst,
+                    let file = unsafePerformIO (TIOU.readTextFile . fromSexpToAgda $ path),
+                    let lineFromFile = forEachDef positions file]
+
 
 textToSexp :: DT.Text -> Sexp
 textToSexp text = fst . head  $ parse sps (DT.unpack text) 
@@ -250,7 +238,6 @@ returnRange (Cons [definitionAtom , Cons names, types, (Cons datas)]) = do
                                         Cons [Atom pos, Integer pospos, Integer line, Integer col], 
                                         Cons endpos], 
                                         extra]]] <- [head (reverse names)]]
---returnRange x = trace (show x) ([5])
 
 
 
