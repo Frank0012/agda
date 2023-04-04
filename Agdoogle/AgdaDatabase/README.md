@@ -1,0 +1,1 @@
+Place all your Agda files you wish to search in here. Do not remove searchTerm.agda.

@@ -1,0 +1,1 @@
+This directory holds all the S-expression files generated for the respective Agda files in the AgdaDatabse. You do not need to touch this directory.
