@@ -120,21 +120,18 @@ runLogSexpWith :: Monad m => SexpLogAction m -> LogSexpT m a -> m a
 runLogSexpWith = flip runReaderT
 
 
-renderSourceFile :: (Monad m, MonadIO m) => TopLevelModuleName -> (TCM.Interface) -> [TCM.Definition] -> m Text
-renderSourceFile mdl iface defs = do
-    return (toText sp)
-      where
-        sp = constr "module" (toSexp mdl : map toSexp defs) 
-
+renderSourceFile :: TopLevelModuleName -> TCM.Interface -> [TCM.Definition] -> Text
+renderSourceFile mdl iface defs =
+    toText $ constr "module" (toSexp mdl : map toSexp defs)
 
 defaultSexpGen :: (MonadIO m, MonadLogSexp m) => SexpOptions -> SourceFile -> [TCM.Definition] -> m ()
 defaultSexpGen opts (SourceFile moduleName iface) defs = do
   logSexp $ render $ "Generating AST for"  <+> pretty moduleName <+> ((parens (pretty target)) <> ".")
-  sexps <- renderSourceFile moduleName iface defs
   liftIO $ UTF8.writeTextToFile target sexps
   where
     ext = dumpFileExt (TCM.iFileType iface)
     target = (sexpOptDir opts) </> modToFile moduleName ext
+    sexps = renderSourceFile moduleName iface defs
 
 prepareOutputDirectory :: MonadIO m => FilePath -> m ()
 prepareOutputDirectory sexpDir = liftIO $ do createDirectoryIfMissing True sexpDir
@@ -149,18 +146,14 @@ modToFile m ext = Network.URI.Encode.encode $ render (pretty m) <.> ext
 -- | Conversion to S-expressions
 
 
--- | New change: adding the binding site to the sexp
+-- | Frank Crossley: adding the binding site to the sexp
 instance Sexpable Name where
     toSexp n = constr "finalName" [(Atom (T.pack $ prettyShow $ nameConcrete n)), (toSexp (nameBindingSite n))]
 
 instance Sexpable ModuleName where
     toSexp (MName lst) = constr "module-name" $ map toSexp lst
 
---instance Sexpable QName where
---    toSexp (QName (MName lst) nam) = constr "name" $ ((mkId $ nameId nam) ++ map toSexp lst ++ [toSexp nam])
---        where mkId (NameId i (ModuleNameHash m)) = [toSexp m, toSexp i]
-
--- | Ignoring module identifiers
+-- | Frank Crossley: ignoring module identifiers
 instance Sexpable QName where
     toSexp (QName (MName lst) nam) = constr "name" $ (map toSexp lst ++ [toSexp nam])
 
@@ -224,10 +217,13 @@ instance Sexpable AI.Term where
 
 instance Sexpable AI.Type where
     toSexp (AI.El srt typ) = constr "type" [toSexp srt, toSexp typ]
-    
-------------------------------------------
+
+-- | Frank Crossley: return position information 
+------------------------------------------------
 instance Sexpable (PO.Position' ()) where
-    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , toSexp (fromIntegral (posLine :: Int32) :: Int), toSexp (fromIntegral (posCol :: Int32) :: Int)]
+    toSexp (PO.Pn _ posPos posLine posCol ) = constr "position" [toSexp (fromIntegral (posPos :: Int32) :: Int) , 
+                                                                 toSexp (fromIntegral (posLine :: Int32) :: Int), 
+                                                                 toSexp (fromIntegral (posCol :: Int32) :: Int)]
 
 instance Sexpable PO.Range where
     toSexp (PO.NoRange) = constr "noRange" []
@@ -250,7 +246,7 @@ instance Sexpable (Seq PO.IntervalWithoutFile) where
 
 instance Sexpable PO.IntervalWithoutFile where
     toSexp (PO.Interval istart iend) = constr "interval" [toSexp istart, toSexp iend]
--------------------------------------------
+------------------------------------------------
 
 instance Sexpable t => Sexpable (AI.Level' t) where
     toSexp (AI.Max k lvls) = constr "max" (toSexp k : map toSexp lvls)
@@ -276,9 +272,9 @@ instance Sexpable AI.Sort where
         sexpify (AI.DummyS s) = constr "sort-dummy" [toSexp s]
 
 instance Sexpable TCM.Definition where
-    toSexp d = constr "definition" [ (toSexp (TCM.defName d)),
-                                     (toSexp (TCM.defType d)),
-                                     (toSexp (TCM.theDef d))
+    toSexp d = constr "definition" [ toSexp (TCM.defName d),
+                                     toSexp (TCM.defType d),
+                                     toSexp (TCM.theDef d)
                                     ]
 instance Sexpable TCM.Defn where
     toSexp (TCM.Axiom {}) = constr "axiom" []
@@ -292,6 +288,7 @@ instance Sexpable TCM.Defn where
     toSexp (TCM.Primitive {primName=s, primClauses=cls}) = constr "primitive" (toSexp s : map toSexp cls)
     toSexp (TCM.PrimitiveSort {primSortName=q, primSortSort=s}) = constr "sort" [toSexp q, toSexp s]
 
+-- | Frank Crossley: add clauseLHSRange and clauseFullRange
 instance Sexpable AI.Clause where
     toSexp (AI.Clause {clauseLHSRange=lhsrng, clauseFullRange=rng, clauseTel=tel, namedClausePats=naps, clauseType=typ, clauseBody=bdy}) =
       constr "clause" [constr "pattern" (map toSexp naps), toSexp lhsrng, toSexp rng, toSexp tel, sexpType typ, sexpBody bdy]

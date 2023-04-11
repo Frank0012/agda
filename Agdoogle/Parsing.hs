@@ -5,12 +5,15 @@ import Control.Applicative ( Alternative(many, (<|>), empty) )
 import qualified Control.Applicative as CA
 import Data.Char
 
+-- | Taken from Sexp.hs (Bauer)
 data Sexp = Atom T.Text | String String | Integer Integer | Double Double | Cons [Sexp]
             deriving (Show, Eq)
 
--- Much of the following code is credited to Graham Hutton
--- from Programming in Haskell second edition and his paper
--- Monadic Parser Combinators written with Erik Meijer
+-- Much of the following code is credited to:
+--  1)  Hutton, Graham. “Monadic Parsing.” Programming in Haskell, Cambridge: Cambridge University Press, 2016, pp. 177-186. eBooks.com, https://libro.eb20.net/Reader/rdr.aspx?b=2654657. Accessed 6 4 2023.
+--  2)  Hutton, Graham, and Erik Meijer. “Monadic Parser Combinators.” 1996, https://www.cs.nott.ac.uk/~pszgmh/monparsing.pdf. Accessed 6 4 2023.
+
+-- | Parser for Sexp files
 newtype Parser a = P (String -> [(a, String)])
 
 instance Functor Parser where
@@ -108,7 +111,7 @@ identifier :: Parser String
 identifier = token ident
 
 
-
+-- | Adding the Sexp parser
 sps :: Parser Sexp
 sps = do
     construct
